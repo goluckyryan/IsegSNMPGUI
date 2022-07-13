@@ -150,13 +150,13 @@ outVList = GetAllOutputHV()
 outIList = GetAllLC() 
 nChannel = len(chList)
 
-updateTime = 5000
+updateTime = 5 #sec
 
 fileName = ''
 
 layout = [
           [
-            sg.Text("refresh period [ms] :", size = 25, justification = "right"),
+            sg.Text("refresh period [sec] :", size = 27, justification = "right"),
             sg.Input(updateTime, size = 8, justification = "right", enable_events=True,  key=("-Refresh-")) 
           ],
          [
@@ -195,7 +195,7 @@ for i in range(0, nChannel):
 
 # Event Loop to process "events" and get the "values" of the inputs
 while True:
-  event, values = window.read(timeout = updateTime, timeout_key = "_TIMEOUT_") ## this pause for 20 sec and wait for event
+  event, values = window.read(timeout = updateTime * 1000, timeout_key = "_TIMEOUT_") ## this pause for 20 sec and wait for event
   #print(event)
   #print(values)
   #print(datetime.datetime.now())
