@@ -25,7 +25,7 @@ iList = iseg.GetAllCurrent() # get all current
 outVList = iseg.GetAllOutputHV()
 outIList = iseg.GetAllLC() 
 
-nChannel = 10 #len(chList)
+nChannel = len(chList)
 updateTime = 60 #sec
 
 fileName = ''
@@ -158,7 +158,7 @@ while True:
       window[("b%d" % chList[i])].update("%.3f" % (outIList[i]*1e6))
       #==== To DataBase
       tempFile.write("Voltage,Ch=%d value=%f\n" % (chList[i], outVList[i]))
-      tempFile.write("LeakageCurrent,Ch=%d value=%f\n" % (chList[i], outIList[i]))
+      tempFile.write("LeakageCurrent,Ch=%d value=%f\n" % (chList[i], outIList[i]*1e6))
     
     tempFile.close()
     

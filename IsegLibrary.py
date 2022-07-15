@@ -3,7 +3,8 @@
 import os
 import subprocess
 
-cmd0Str = "-v 2c -m +WIENER-CRATE-MIB -c guru 128.186.111.101 "
+#cmd0Str = "-v2c -m +WIENER-CRATE-MIB -c guru 128.186.111.101 "
+cmd0Str = "-v2c -Op .12 -m +WIENER-CRATE-MIB -c guru 128.186.111.101 "
 
 def SendCmd(option,cmd):
   if option == 0 :
