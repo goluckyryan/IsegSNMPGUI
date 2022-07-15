@@ -126,6 +126,7 @@ def SwitchOnHV(ch, onOff):
   try :
     int(ch)
     int(onOff)
+    SendCmd(1, "outputSwitch.u" + str(ch) + " i " + str(10))
     return SendCmd(1, "outputSwitch.u" + str(ch) + " i " + str(onOff))
   except :
     print("either ch or onOff is not int")
