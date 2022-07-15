@@ -104,6 +104,16 @@ def GetAllLC():
       k = k[aa+6: -3].strip()
       kaka.append(float(k))
   return kaka
+  
+def GetAllOnOff():
+  haha = SendCmd(2, "outputSwitch")
+  kaka = []
+  for k in haha.split('WIENER-CRATE-MIB::outputSwitch'):
+    if len(k) > 0 :
+      aa = k.find("INTEGER:")
+      k = k[aa+12:-2].strip('(').strip(')')
+      kaka.append(int(k))
+  return kaka
 
 #======== Set Settings
 def SetHV(ch, val):
@@ -146,6 +156,24 @@ def SetHVFallRate(ch, rate):
     return SendCmd(1, "outputVoltageFallRate.u" + str(ch) + " F " + str(rate))
   except:
     print("either ch is not int or rate is not float")
+
+#===================== Auxliary function
+
+def SplitChList(chList):
+  sep = list()
+  for i in range(0, len(chList)):
+    if i == 0 :
+      sep.append(i)
+
+    if (i < len(chList)-1) and (chList[i+1] - chList[i]) > 1 :
+      sep.append(i+1)
+    
+    if i == len(chList)-1:
+      sep.append(i+1)
+  newChList = list()
+  for i in range(0, len(sep)-1):
+    newChList.append( chList[sep[i]:sep[i+1]] )
+  return newChList    
 #===================== SandBox
 
 #print( GetOutputHV(0)         )
@@ -159,3 +187,7 @@ def SetHVFallRate(ch, rate):
 
 #hvList = GetAllOutputHV()
 #print(hvList)
+
+#chList = GetChList()
+#print( SplitChList(chList))
+#print( len(SplitChList(chList)))

@@ -24,37 +24,69 @@ hvList = iseg.GetAllHV()    # get all V
 iList = iseg.GetAllCurrent() # get all current
 outVList = iseg.GetAllOutputHV()
 outIList = iseg.GetAllLC() 
+onOffList = iseg.GetAllOnOff()
 
+modChList = iseg.SplitChList(chList)
+
+nMod = len(modChList)
 nChannel = len(chList)
 updateTime = 60 #sec
 
 fileName = ''
 
+layoutTab = []
+for k in range(0, nMod):
+  layoutTab.append([])
+
+for k in range(0, nMod):
+  
+  baseI = 0
+  for kk in range(0, k):
+    baseI += len(modChList[kk])
+  
+  ## i know it is stupid to have this every time, but pysimplegui request a non-used array
+  layoutTab[k].append([
+            sg.Text("Name", size = 8, justification = "center" ),
+            sg.Text("CH", size = 4, justification = "center" ),
+            sg.Text("On/Off", size = 6, justification = "center"),
+            sg.Text("Set V [V]", size = 8, justification = "center" ),
+            sg.Text("Set I [mA]", size = 9, justification = "center" ),
+            sg.Text("Out V [V]", size = 8, justification = "center" ),
+            sg.Text("Out I [uA]", size = 10, justification = "center" )
+                      ])
+  
+  for j in range(0, len(modChList[k])) :
+    
+    i = baseI + j
+    
+    layoutTab[k].append(
+                  [
+                    sg.Input(default_text='', size = 8, justification = "left", key=("n%d" % chList[i])),
+                    sg.Text("u"+str(chList[i]), size = 4, justification = "center"  ),
+                    sg.Checkbox('', default = onOffList[i], size = 3, enable_events = True, key=("c%d" % chList[i])),
+                    sg.Input(default_text=("%.3f" % hvList[i]), size = 8, justification = "right", enable_events=True,  key=("v%d" % chList[i]) ),
+                    sg.Input(default_text=("%.3f" % (iList[i]*1000)), size = 9, justification = "right", enable_events=True,  key=("i%d" % chList[i]) ),
+                    sg.Input(default_text=("%.3f" % outVList[i]), size = 8, justification = "right", enable_events=True,  key=("a%d" % chList[i]), readonly = True ),
+                    sg.Input(default_text=("%.3f" % (outIList[i]*1e6)), size = 10, justification = "right", enable_events=True,  key=("b%d" % chList[i]), readonly = True )
+                  ]
+                  )
+
+layoutTabGroup = []
+layoutTabGroup.append([])
+for k in range(0, nMod):
+  layoutTabGroup[0].append(sg.Tab("Mod-%0d" % k, layoutTab[k]))
+
 layout = [
           [
             sg.Text("refresh period [sec] :", size = 27, justification = "right"),
             sg.Input(updateTime, size = 8, justification = "right", enable_events=True,  key=("-Refresh-")) 
-          ],
-         [
-          sg.Text("Name", size = 8, justification = "center" ),
-          sg.Text("CH", size = 4, justification = "center" ),
-          sg.Text("On/Off", size = 6, justification = "center"),
-          sg.Text("Set V [V]", size = 8, justification = "center" ),
-          sg.Text("Set I [mA]", size = 9, justification = "center" ),
-          sg.Text("Out V [V]", size = 8, justification = "center" ),
-          sg.Text("Out I [uA]", size = 10, justification = "center" )
-         ]]
-
-for i in range(0, nChannel):
-  layout.append([ sg.Input(default_text='', size = 8, justification = "left", key=("n%d" % chList[i])),
-                  sg.Text("u"+str(chList[i]), size = 4, justification = "center"  ),
-                  sg.Checkbox('', size = 3, enable_events = True, key=("c%d" % chList[i])),
-                  sg.Input(default_text=("%.3f" % hvList[i]), size = 8, justification = "right", enable_events=True,  key=("v%d" % chList[i]) ),
-                  sg.Input(default_text=("%.3f" % (iList[i]*1000)), size = 9, justification = "right", enable_events=True,  key=("i%d" % chList[i]) ),
-                  sg.Input(default_text=("%.3f" % outVList[i]), size = 8, justification = "right", enable_events=True,  key=("a%d" % chList[i]), readonly = True ),
-                  sg.Input(default_text=("%.3f" % (outIList[i]*1e6)), size = 10, justification = "right", enable_events=True,  key=("b%d" % chList[i]), readonly = True ),
-                ])
-
+          ]
+          ,
+          [
+            sg.TabGroup(layoutTabGroup)
+          ]
+        ]
+  
 layout.append([sg.FileSaveAs('Save As', target = '-Save-', initial_folder='~', file_types = (('csv file','*.csv'),)),
                sg.FileBrowse('Load', target = '-Load-', initial_folder='~', file_types = (('csv file','*.csv'),)),
                sg.Input(default_text=fileName, expand_x = True, justification = "left", readonly = True, enable_events=True, key="-Save-" ),
@@ -70,11 +102,11 @@ layout.append([sg.Combo(comboList, default_value = comboList[0], size = 20, enab
 
 window = sg.Window('Iseg HV Control & Monitor', layout, finalize = True, keep_on_top = True)
 
-for i in range(0, nChannel):
-  window[("v%d" % chList[i])].bind("<Return>", "_Enter")
-  window[("i%d" % chList[i])].bind("<Return>", "_Enter")
-  window[("v%d" % chList[i])].bind("<KP_Enter>", "_Enter")
-  window[("i%d" % chList[i])].bind("<KP_Enter>", "_Enter")
+#for i in range(0, nChannel):
+#  window[("v%d" % chList[i])].bind("<Return>", "_Enter")
+#  window[("i%d" % chList[i])].bind("<Return>", "_Enter")
+#  window[("v%d" % chList[i])].bind("<KP_Enter>", "_Enter")
+#  window[("i%d" % chList[i])].bind("<KP_Enter>", "_Enter")
 
 # Event Loop to process "events" and get the "values" of the inputs
 while True:
