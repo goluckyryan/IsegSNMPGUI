@@ -102,11 +102,11 @@ layout.append([sg.Combo(comboList, default_value = comboList[0], size = 20, enab
 
 window = sg.Window('Iseg HV Control & Monitor', layout, finalize = True, keep_on_top = True)
 
-#for i in range(0, nChannel):
-#  window[("v%d" % chList[i])].bind("<Return>", "_Enter")
-#  window[("i%d" % chList[i])].bind("<Return>", "_Enter")
-#  window[("v%d" % chList[i])].bind("<KP_Enter>", "_Enter")
-#  window[("i%d" % chList[i])].bind("<KP_Enter>", "_Enter")
+for i in range(0, nChannel):
+  window[("v%d" % chList[i])].bind("<Return>", "_Enter")
+  window[("i%d" % chList[i])].bind("<Return>", "_Enter")
+  window[("v%d" % chList[i])].bind("<KP_Enter>", "_Enter")
+  window[("i%d" % chList[i])].bind("<KP_Enter>", "_Enter")
 
 # Event Loop to process "events" and get the "values" of the inputs
 while True:
