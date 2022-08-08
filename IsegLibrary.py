@@ -18,6 +18,9 @@ class Mpod:
     except :
       print("cannot establish communitation via " + self.IP)
     
+  def SetIP(self, ip):
+    self.__init__(ip)
+    
   def SendCmd(self, option,cmd):
     if (self.isConnected == False ) : return 0
     if option == 0 :

@@ -5,6 +5,7 @@ import os
 import datetime
 import csv
 import socket
+import sys
 
 #assign a port, to prevent the script run mulitple time
 s = socket.socket()
@@ -12,12 +13,19 @@ host = socket.gethostname()
 port = 4305
 s.bind((host,port))
 
-IP = input('Mpod IP address to connect : ')
+nArg = len(sys.argv)
+
+print ( nArg)
+
+if nArg > 1 :
+  IP = sys.argv[1]
+else :
+  IP = input('Mpod IP address to connect : ')
 
 #===================== GUI
 import PySimpleGUI as sg
 
-#gui.theme('DarkAmber')
+sg.theme('DarkPurple5')
 
 header = ["name", "HV [V]", "Current [mA]"]
 
@@ -25,6 +33,7 @@ mpod = iseg.Mpod(IP)
 
 if mpod.isConnected == False:
   exit()
+
 
 chList = mpod.GetChList()
 hvList = mpod.GetAllHV()    # get all V

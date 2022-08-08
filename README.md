@@ -1,5 +1,11 @@
-request packages
+# Request packages
 
-sudo apt install python3-tk snmp snmp-mibs-downloader
+in Ubuntu 20+
 
-python3 -m pip install pysimplegui
+>sudo apt install python3-tk snmp snmp-mibs-downloader
+>python3 -m pip install pysimplegui
+
+# Usage
+
+>python3 IsegHVController.py <IP>
+
