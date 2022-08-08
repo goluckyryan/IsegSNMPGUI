@@ -12,6 +12,8 @@ host = socket.gethostname()
 port = 4305
 s.bind((host,port))
 
+IP = input('Mpod IP address to connect : ')
+
 #===================== GUI
 import PySimpleGUI as sg
 
@@ -19,12 +21,17 @@ import PySimpleGUI as sg
 
 header = ["name", "HV [V]", "Current [mA]"]
 
-chList = iseg.GetChList()
-hvList = iseg.GetAllHV()    # get all V
-iList = iseg.GetAllCurrent() # get all current
-outVList = iseg.GetAllOutputHV()
-outIList = iseg.GetAllLC() 
-onOffList = iseg.GetAllOnOff()
+mpod = iseg.Mpod(IP)
+
+if mpod.isConnected == False:
+  exit()
+
+chList = mpod.GetChList()
+hvList = mpod.GetAllHV()    # get all V
+iList = mpod.GetAllCurrent() # get all current
+outVList = mpod.GetAllOutputHV()
+outIList = mpod.GetAllLC() 
+onOffList = mpod.GetAllOnOff()
 
 modChList = iseg.SplitChList(chList)
 
@@ -39,7 +46,6 @@ for k in range(0, nMod):
   layoutTab.append([])
 
 for k in range(0, nMod):
-  
   baseI = 0
   for kk in range(0, k):
     baseI += len(modChList[kk])
@@ -56,9 +62,7 @@ for k in range(0, nMod):
                       ])
   
   for j in range(0, len(modChList[k])) :
-    
     i = baseI + j
-    
     layoutTab[k].append(
                   [
                     sg.Input(default_text='', size = 8, justification = "left", key=("n%d" % chList[i])),
@@ -77,6 +81,10 @@ for k in range(0, nMod):
   layoutTabGroup[0].append(sg.Tab("Mod-%0d" % k, layoutTab[k]))
 
 layout = [
+          [
+            sg.Text("IP :", size = 27, justification = "right"),
+            sg.Input(IP, size = 16, justification = "right", readonly = True),
+          ],
           [
             sg.Text("refresh period [sec] :", size = 27, justification = "right"),
             sg.Input(updateTime, size = 8, justification = "right", enable_events=True,  key=("-Refresh-")) 
@@ -123,7 +131,7 @@ while True:
   
   if event[0:1] == 'c' :
     ID = event[1:]
-    iseg.SwitchOnHV(int(ID), int(window[event].get()))
+    mpod.SwitchOnHV(int(ID), int(window[event].get()))
   
   if event == '-Save-' :
     fileName = values["Save As"]
@@ -144,8 +152,8 @@ while True:
       window[("n%d" % chList[i])].update(row[0])
       window[("v%d" % chList[i])].update(row[2]) 
       window[("i%d" % chList[i])].update(row[3])
-      iseg.SetHV(chList[i], float(row[2]))
-      iseg.SetCurrent(chList[i], float(row[3])/1000)
+      mpod.SetHV(chList[i], float(row[2]))
+      mpod.SetCurrent(chList[i], float(row[3])/1000)
       i += 1
   
   if event in ["-VRateCombo-", "-VRateCh-", "-VRate-"]:
@@ -153,33 +161,33 @@ while True:
     ch = window["-VRateCh-"].get()
     val = window["-VRate-"].get()
     if item == comboList[0]:
-      window["-VRate-"].update("%.3f" % float(iseg.GetHVRiseRate(int(ch))))
+      window["-VRate-"].update("%.3f" % float(mpod.GetHVRiseRate(int(ch))))
     if item == comboList[1]:
-      window["-VRate-"].update("%.3f" % float(iseg.GetHVFallRate(int(ch))))
+      window["-VRate-"].update("%.3f" % float(mpod.GetHVFallRate(int(ch))))
     if item == comboList[2]:
-      iseg.SetHVRiseRate(ch, val)
-      window["-VRate-"].update("%.3f" % float(iseg.GetHVRiseRate(int(ch))))
+      mpod.SetHVRiseRate(ch, val)
+      window["-VRate-"].update("%.3f" % float(mpod.GetHVRiseRate(int(ch))))
     if item == comboList[3]:
-      iseg.SetHVFallRate(ch, val)
-      window["-VRate-"].update("%.3f" % float(iseg.GetHVFallRate(int(ch))))      
+      mpod.SetHVFallRate(ch, val)
+      window["-VRate-"].update("%.3f" % float(mpod.GetHVFallRate(int(ch))))      
   
   haha = event.find('_Enter')
   if haha > 0 :
     ID = event[:haha]
     ch = int(ID[1:])    
     if event[0:1] == 'v' :
-      iseg.SetHV(ch, float(window[ID].get()))
-      window[ID].update("%.3f" % iseg.GetHV(ch))
+      mpod.SetHV(ch, float(window[ID].get()))
+      window[ID].update("%.3f" % mpod.GetHV(ch))
     if event[0:1] == 'i' :
-      iseg.SetCurrent(ch, float(window[ID].get())/1000.)
-      window[ID].update("%.3f" % (iseg.GetCurrent(ch)*1000))
+      mpod.SetCurrent(ch, float(window[ID].get())/1000.)
+      window[ID].update("%.3f" % (mpod.GetCurrent(ch)*1000))
   
 
   if event == "_TIMEOUT_" :
     #hvList = GetAllHV()    # get all V
     #iList = GetAllCurrent() # get all current
-    outVList = iseg.GetAllOutputHV()
-    outIList = iseg.GetAllLC() 
+    outVList = mpod.GetAllOutputHV()
+    outIList = mpod.GetAllLC() 
     
     tempFile = open("temp.dat", "w")
     
