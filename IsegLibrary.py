@@ -27,8 +27,9 @@ class Mpod:
       print(kaka)
       if len(kaka) == 1 :
         print(">>>>> cannot get channels list, probably modules switched off\n")
-      else:
         self.isConnected = False
+      else:
+        self.isConnected = True
     except :
       self.isConnected = False
       print(">>>>>> cannot establish communitation via " + self.IP)

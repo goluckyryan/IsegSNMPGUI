@@ -33,6 +33,7 @@ mpod = iseg.Mpod(IP)
 if mpod.isConnected == False:
   exit()
 
+print("============ GUI start")
 
 chList = mpod.GetChList()
 hvList = mpod.GetAllHV()    # get all V
