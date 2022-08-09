@@ -30,7 +30,6 @@ sg.theme('DarkPurple5')
 header = ["name", "HV [V]", "Current [mA]"]
 
 mpod = iseg.Mpod(IP)
-
 if mpod.isConnected == False:
   exit()
 

@@ -30,7 +30,9 @@ class Mpod:
       else:
         self.isConnected = False
     except :
+      self.isConnected = False
       print(">>>>>> cannot establish communitation via " + self.IP)
+      
     
   def SetIP(self, ip):
     self.__init__(ip)
