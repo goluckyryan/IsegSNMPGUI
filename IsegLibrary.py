@@ -224,7 +224,7 @@ def SplitChList(chList):
   return newChList    
 #===================== SandBox
 
-mpod = Mpod("128.186.111.101")
+#mpod = Mpod("128.186.111.101")
 
 #print( mpod.GetOutputHV(0)         )
 #print( mpod.GetLI(0)         )
