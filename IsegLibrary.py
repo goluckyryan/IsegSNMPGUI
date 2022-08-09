@@ -5,9 +5,16 @@ import subprocess
 
 class Mpod:
   def __init__(self, ip):
+    #check SNMP version
+    version = str(subprocess.check_output(['snmpwalk', '-V'], stderr=subprocess.STDOUT).decode("ascii"))
+    versionNum = float(version[17:-3])
     self.IP = ip
-    #cmd0Str = "-v2c -m +WIENER-CRATE-MIB -c guru 128.186.111.101 "
-    self.cmd0Str = "-v2c -Op .12 -m +WIENER-CRATE-MIB -c guru %s " % self.IP
+    if versionNum < 5.8 :
+      print(">>>>>> snmp version < 5.8, does not support high precision.")
+      self.cmd0Str = "-v2c -m +WIENER-CRATE-MIB -c guru %s " % self.IP
+    else:
+      self.cmd0Str = "-v2c -Op .12 -m +WIENER-CRATE-MIB -c guru %s " % self.IP
+      
     self.isConnected = False
     print( "testing communication via " + self.IP)
     cmdStr = "snmpwalk " + self.cmd0Str
@@ -15,8 +22,15 @@ class Mpod:
       result = str(subprocess.check_output(cmdStr, shell=True))
       print( result )
       self.isConnected = True
+      kaka = self.GetChList() 
+      print(" channel list : ")
+      print(kaka)
+      if len(kaka) == 1 :
+        print(">>>>> cannot get channels list, probably modules switched off\n")
+      else:
+        self.isConnected = False
     except :
-      print("cannot establish communitation via " + self.IP)
+      print(">>>>>> cannot establish communitation via " + self.IP)
     
   def SetIP(self, ip):
     self.__init__(ip)
@@ -33,6 +47,7 @@ class Mpod:
       cmdStr = "echo option: 0 - get, 1 - set, 2 - walk"
     #print(cmdStr)
     result = str(subprocess.check_output(cmdStr, shell=True))
+    #print(result)
     return result.lstrip('b\'').rstrip('\'').rstrip('\n')
 
   #======== Get settings
@@ -209,7 +224,7 @@ def SplitChList(chList):
   return newChList    
 #===================== SandBox
 
-#mpod = Mpod("128.186.111.101")
+mpod = Mpod("128.186.111.101")
 
 #print( mpod.GetOutputHV(0)         )
 #print( mpod.GetLI(0)         )
