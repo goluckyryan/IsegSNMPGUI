@@ -22,6 +22,9 @@ if nArg > 1 :
 else :
   IP = input('Mpod IP address to connect : ')
 
+databaseIP="128.186.111.107"
+pushToDB = False
+
 #===================== GUI
 import PySimpleGUI as sg
 
@@ -93,6 +96,11 @@ layout = [
           [
             sg.Text("IP :", size = 27, justification = "right"),
             sg.Input(IP, size = 16, justification = "right", readonly = True),
+          ],
+          [
+            sg.Text("Database IP :", size = 27, justification = "right"),
+            sg.Input(databaseIP, size = 16, justification = "right", key='-DatabaseIP-', readonly = False),
+            sg.Checkbox('Enable', key='-DatabaseEnable-', enable_events=True)
           ],
           [
             sg.Text("refresh period [sec] :", size = 27, justification = "right"),
@@ -191,6 +199,9 @@ while True:
       mpod.SetCurrent(ch, float(window[ID].get())/1000.)
       window[ID].update("%.3f" % (mpod.GetCurrent(ch)*1000))
   
+  if event == "-DatabaseEnable-" :
+    pushToDB = window["-DatabaseEnable-"].get()
+    window["-DatabaseIP-"].update(disabled=pushToDB)
 
   if event == "_TIMEOUT_" :
     #hvList = GetAllHV()    # get all V
@@ -198,7 +209,9 @@ while True:
     outVList = mpod.GetAllOutputHV()
     outIList = mpod.GetAllLC() 
     
-    tempFile = open("temp.dat", "w")
+    pushToDB = window["-DatabaseEnable-"].get()
+    if pushToDB :
+      tempFile = open("temp.dat", "w")
     
     for i in range(0, nChannel):
       #window[("v%d" % chList[i])].update("%.3f" % hvList[i])
@@ -206,12 +219,13 @@ while True:
       window[("a%d" % chList[i])].update("%.3f" % outVList[i])
       window[("b%d" % chList[i])].update("%.3f" % (outIList[i]*1e6))
       #==== To DataBase
-      tempFile.write("Voltage,Ch=%d value=%f\n" % (chList[i], outVList[i]))
-      tempFile.write("LeakageCurrent,Ch=%d value=%f\n" % (chList[i], outIList[i]*1e6))
+      if pushToDB :
+        tempFile.write("Voltage,Ch=%d value=%f\n" % (chList[i], outVList[i]))
+        tempFile.write("LeakageCurrent,Ch=%d value=%f\n" % (chList[i], outIList[i]*1e6))
     
-    tempFile.close()
-    
-    os.system("curl -XPOST http://128.186.111.107:8086/write?db=testing --data-binary @temp.dat")
+    if pushToDB:
+      tempFile.close()
+      os.system("curl -XPOST http://%s:8086/write?db=testing --data-binary @temp.dat" % databaseIP )
       
   
 window.close()
