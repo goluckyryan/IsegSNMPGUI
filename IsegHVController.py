@@ -72,7 +72,15 @@ for k in range(0, nMod):
             sg.Text("Out V [V]", size = 8, justification = "center" ),
             sg.Text("Out I [uA]", size = 10, justification = "center" )
                       ])
-  
+
+  layoutTab[k].append([
+            sg.Text("", size = 8, justification = "center" ),
+            sg.Text("All", size = 4, justification = "center"  ),
+            sg.Checkbox('', default = 0, size = 3, enable_events = True, key=("c-ALL%d" % k)),
+            sg.Input(default_text=("" ), size = 8, justification = "right", enable_events=True,  key=("v-ALL%d" % k) ),
+            sg.Input(default_text=("" ), size = 9, justification = "right", enable_events=True,  key=("i-ALL%d" % k) ),
+                      ])
+
   for j in range(0, len(modChList[k])) :
     i = baseI + j
     layoutTab[k].append(
@@ -127,11 +135,14 @@ layout.append([sg.Combo(comboList, default_value = comboList[0], size = 20, enab
 
 window = sg.Window('Iseg HV Control & Monitor', layout, finalize = True, keep_on_top = True)
 
+for k in range(0, nMod):
+  window[("i-ALL%d" % k)].bind("<Return>", "_EnterALL")
+  window[("v-ALL%d" % k)].bind("<KP_Enter>", "_EnterALL")
 for i in range(0, nChannel):
-  window[("v%d" % chList[i])].bind("<Return>", "_Enter")
-  window[("i%d" % chList[i])].bind("<Return>", "_Enter")
-  window[("v%d" % chList[i])].bind("<KP_Enter>", "_Enter")
-  window[("i%d" % chList[i])].bind("<KP_Enter>", "_Enter")
+  window[("v%d" % chList[i])].bind("<Return>", "_EnterCh")
+  window[("i%d" % chList[i])].bind("<Return>", "_EnterCh")
+  window[("v%d" % chList[i])].bind("<KP_Enter>", "_EnterCh")
+  window[("i%d" % chList[i])].bind("<KP_Enter>", "_EnterCh")
 
 # Event Loop to process "events" and get the "values" of the inputs
 while True:
@@ -147,9 +158,16 @@ while True:
     break
   
   if event[0:1] == 'c' :
-    ID = event[1:]
-    mpod.SwitchOnHV(int(ID), int(window[event].get()))
-  
+    if event[0:2] == 'c-':
+      mod = int(event[5:])
+      for ch in modChList[mod]:
+        mpod.SwitchOnHV(int(ch), int(window[event].get()))
+        window[("c%d" % ch)].update(window[event].get())
+    else :
+      ID = event[1:]
+      mpod.SwitchOnHV(int(ID), int(window[event].get()))
+      window[("c-ALL%d" % (ch%100 - 1))].update(False)
+
   if event == '-Save-' :
     fileName = values["Save As"]
     outfile = open(fileName, "w")
@@ -187,18 +205,34 @@ while True:
     if item == comboList[3]:
       mpod.SetHVFallRate(ch, val)
       window["-VRate-"].update("%.3f" % float(mpod.GetHVFallRate(int(ch))))      
-  
-  haha = event.find('_Enter')
+
+  haha = event.find('_EnterCh')
   if haha > 0 :
     ID = event[:haha]
     ch = int(ID[1:])    
     if event[0:1] == 'v' :
       mpod.SetHV(ch, float(window[ID].get()))
       window[ID].update("%.3f" % mpod.GetHV(ch))
+      print(("v-ALL%d" % (ch%100 - 1)))
+      window[("v-ALL%d" % (ch%100 - 1))].update("")
     if event[0:1] == 'i' :
       mpod.SetCurrent(ch, float(window[ID].get())/1000.)
       window[ID].update("%.3f" % (mpod.GetCurrent(ch)*1000))
-  
+      window[("i-ALL%d" % (ch%100 - 1))].update("")
+
+  jaja = event.find('_EnterALL')
+  if jaja > 0 :
+    ID = event[:jaja]
+    mod = int(ID[5:])
+    if event[0:1] == 'v' :
+      for ch in modChList[mod]:
+        mpod.SetHV(ch, float(window[("v%d" % ch)].get()))
+        window[("v%d" % ch)].update("%.3f" % mpod.GetHV(ch))
+    if event[0:1] == 'i' :
+      for ch in modChList[mod]:
+        mpod.SetCurrent(ch, float(window[ID].get())/1000.)
+        window[("i%d" % ch)].update("%.3f" % (mpod.GetCurrent(ch)*1000))
+
   if event == "-DatabaseEnable-" :
     pushToDB = window["-DatabaseEnable-"].get()
     window["-DatabaseIP-"].update(disabled=pushToDB)
