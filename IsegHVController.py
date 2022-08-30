@@ -6,6 +6,7 @@ import datetime
 import csv
 import socket
 import sys
+import time
 
 #assign a port, to prevent the script run mulitple time
 s = socket.socket()
@@ -49,13 +50,22 @@ modChList = iseg.SplitChList(chList)
 
 nMod = len(modChList)
 nChannel = len(chList)
-updateTime = 60 #sec
+updateTime = 1 #sec
 
 fileName = ''
 
 layoutTab = []
+isAllOn = []
 for k in range(0, nMod):
   layoutTab.append([])
+  isAllOn.append(True)
+  baseI = 0
+  for kk in range(0, k):
+    baseI += len(modChList[kk])
+  for j in range(0, len(modChList[k])) :
+    i = baseI + j
+    if( onOffList[i] == False ):
+      isAllOn[k] = False
 
 for k in range(0, nMod):
   baseI = 0
@@ -76,7 +86,7 @@ for k in range(0, nMod):
   layoutTab[k].append([
             sg.Text("", size = 8, justification = "center" ),
             sg.Text("All", size = 4, justification = "center"  ),
-            sg.Checkbox('', default = 0, size = 3, enable_events = True, key=("c-ALL%d" % k)),
+            sg.Checkbox('', default = isAllOn[k], size = 3, enable_events = True, key=("c-ALL%d" % k)),
             sg.Input(default_text=("" ), size = 8, justification = "right", enable_events=True,  key=("v-ALL%d" % k) ),
             sg.Input(default_text=("" ), size = 9, justification = "right", enable_events=True,  key=("i-ALL%d" % k) ),
                       ])
@@ -137,6 +147,8 @@ window = sg.Window('Iseg HV Control & Monitor', layout, finalize = True, keep_on
 
 for k in range(0, nMod):
   window[("i-ALL%d" % k)].bind("<Return>", "_EnterALL")
+  window[("i-ALL%d" % k)].bind("<KP_Return>", "_EnterALL")
+  window[("v-ALL%d" % k)].bind("<Return>", "_EnterALL")
   window[("v-ALL%d" % k)].bind("<KP_Enter>", "_EnterALL")
 for i in range(0, nChannel):
   window[("v%d" % chList[i])].bind("<Return>", "_EnterCh")
@@ -163,10 +175,18 @@ while True:
       for ch in modChList[mod]:
         mpod.SwitchOnHV(int(ch), int(window[event].get()))
         window[("c%d" % ch)].update(window[event].get())
+        window.refresh()
+        #time.sleep(0.1)
     else :
       ID = event[1:]
       mpod.SwitchOnHV(int(ID), int(window[event].get()))
-      window[("c-ALL%d" % (ch%100 - 1))].update(False)
+      mod = int(int(ID)/100)
+      #--- check is all On
+      isAllOn[mod] = True
+      for ch in modChList[mod]:
+        if( window[("c%d" % ch)].get() == False ):
+          isAllOn[mod] = False
+      window[("c-ALL%d" % mod)].update(isAllOn[mod]);
 
   if event == '-Save-' :
     fileName = values["Save As"]
@@ -213,45 +233,51 @@ while True:
     if event[0:1] == 'v' :
       mpod.SetHV(ch, float(window[ID].get()))
       window[ID].update("%.3f" % mpod.GetHV(ch))
-      print(("v-ALL%d" % (ch%100 - 1)))
-      window[("v-ALL%d" % (ch%100 - 1))].update("")
+      print(("v-ALL%d" % int(ch/100)))
+      window[("v-ALL%d" % int(ch/100))].update("")
     if event[0:1] == 'i' :
       mpod.SetCurrent(ch, float(window[ID].get())/1000.)
       window[ID].update("%.3f" % (mpod.GetCurrent(ch)*1000))
-      window[("i-ALL%d" % (ch%100 - 1))].update("")
+      print(("i-ALL%d" % int(ch/100)))
+      window[("i-ALL%d" % int(ch/100))].update("")
 
   jaja = event.find('_EnterALL')
   if jaja > 0 :
     ID = event[:jaja]
     mod = int(ID[5:])
+    val =  float(window[ID].get());
     if event[0:1] == 'v' :
       for ch in modChList[mod]:
-        mpod.SetHV(ch, float(window[("v%d" % ch)].get()))
+        mpod.SetHV(ch, val)
+        window[ID].update("%.3f" % val)
         window[("v%d" % ch)].update("%.3f" % mpod.GetHV(ch))
+        window.refresh()
+        #time.sleep(0.1)
     if event[0:1] == 'i' :
       for ch in modChList[mod]:
-        mpod.SetCurrent(ch, float(window[ID].get())/1000.)
+        mpod.SetCurrent(ch, val/1000.)
+        window[ID].update("%.3f" % val)
         window[("i%d" % ch)].update("%.3f" % (mpod.GetCurrent(ch)*1000))
+        window.refresh()
+        #time.sleep(0.1)
 
   if event == "-DatabaseEnable-" :
     pushToDB = window["-DatabaseEnable-"].get()
     window["-DatabaseIP-"].update(disabled=pushToDB)
 
   if event == "_TIMEOUT_" :
-    #hvList = GetAllHV()    # get all V
-    #iList = GetAllCurrent() # get all current
     outVList = mpod.GetAllOutputHV()
     outIList = mpod.GetAllLC() 
+    #onOffList = mpod.GetAllOnOff()
     
     pushToDB = window["-DatabaseEnable-"].get()
     if pushToDB :
       tempFile = open("temp.dat", "w")
     
     for i in range(0, nChannel):
-      #window[("v%d" % chList[i])].update("%.3f" % hvList[i])
-      #window[("i%d" % chList[i])].update("%.3f" % (iList[i]*1000))
       window[("a%d" % chList[i])].update("%.3f" % outVList[i])
       window[("b%d" % chList[i])].update("%.3f" % (outIList[i]*1e6))
+      
       #==== To DataBase
       if pushToDB :
         tempFile.write("Voltage,Ch=%d value=%f\n" % (chList[i], outVList[i]))

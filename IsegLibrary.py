@@ -171,7 +171,7 @@ class Mpod:
       return self.SendCmd(1, "outputVoltage.u" + str(ch) + " F " + str(val))
     except:
       print("either ch is not int or val is not float")
-      
+  
   def SetCurrent(self, ch, val):
     if (self.isConnected == False ) : return 0
     try :
@@ -191,6 +191,16 @@ class Mpod:
     except :
       print("either ch or onOff is not int")
 
+  def SwitchALLOnHV(self, onOff):
+    if (self.isConnected == False ) : return 0
+    try :
+      int(onOff)
+      self.SendCmd(1, "groupsSwitch" + " i " + str(10))
+      return self.SendCmd(1, "groupsSwitch.u" + " i " + str(onOff))
+    except :
+      print("onOff is not int or communication problem.")
+
+
   def SetHVRiseRate(self, ch, rate):
     if (self.isConnected == False ) : return 0
     try :
@@ -208,6 +218,7 @@ class Mpod:
       return SendCmd(1, "outputVoltageFallRate.u" + str(ch) + " F " + str(rate))
     except:
       print("either ch is not int or rate is not float")
+
 
 #===================== Auxliary function
 def SplitChList(chList):
@@ -228,6 +239,10 @@ def SplitChList(chList):
 #===================== SandBox
 
 #mpod = Mpod("128.186.111.101")
+
+#print( mpod.SendCmd(2, "outputCurrent F 0.0001"))
+#hvList = mpod.GetAllCurrent()
+#print(hvList)
 
 #print( mpod.GetOutputHV(0)         )
 #print( mpod.GetLI(0)         )
