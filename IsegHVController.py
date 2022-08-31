@@ -118,7 +118,7 @@ layout = [
           [
             sg.Text("Database IP :", size = 27, justification = "right"),
             sg.Input(databaseIP, size = 16, justification = "right", key='-DatabaseIP-', readonly = False),
-            sg.Checkbox('Enable', key='-DatabaseEnable-', enable_events=True)
+            sg.Checkbox('Enable Database', key='-DatabaseEnable-', enable_events=True)
           ],
           [
             sg.Text("refresh period [sec] :", size = 27, justification = "right"),
