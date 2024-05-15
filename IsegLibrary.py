@@ -1,7 +1,15 @@
 #!/usr/bin/python3
   
 import os
+import re
 import subprocess
+
+def extract_number_between_parentheses(text):
+  match = re.search(r'\((\d+)\)', text)
+  if match:
+    return int(match.group(1))
+  else:
+    return None
 
 class Mpod:
   def __init__(self, ip):
@@ -157,9 +165,9 @@ class Mpod:
     kaka = []
     for k in haha.split('WIENER-CRATE-MIB::outputSwitch'):
       if len(k) > 0 :
-        aa = k.find("INTEGER:")
-        k = k[aa+12:-2].strip('(').strip(')')
-        kaka.append(int(k))
+        # aa = k.find("INTEGER:")
+        # k = k[aa+12:-2].strip('(').strip(')')
+        kaka.append(extract_number_between_parentheses(k))
     return kaka
 
   #======== Set Settings
@@ -215,7 +223,7 @@ class Mpod:
     try :
       int(ch)
       int(rate)
-      return SendCmd(1, "outputVoltageFallRate.u" + str(ch) + " F " + str(rate))
+      return self.SendCmd(1, "outputVoltageFallRate.u" + str(ch) + " F " + str(rate))
     except:
       print("either ch is not int or rate is not float")
 
