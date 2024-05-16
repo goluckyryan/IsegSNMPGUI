@@ -63,27 +63,13 @@ for k in range(0, nMod):
 nChannel = len(chList)
 updateTime = 1 #sec
 
-print(onOffList)
+# print(onOffList)
 
-from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QCheckBox, QLineEdit, QLabel, QVBoxLayout, QWidget, QTabWidget, QGridLayout
+from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QCheckBox, QLineEdit, QLabel, QVBoxLayout, QWidget, QTabWidget, QGridLayout, QMessageBox, QFileDialog, QProgressBar
 from PyQt6.QtCore import Qt, QThread, QTimer, QObject, pyqtSignal
 from functools import partial
 
 ColStrList = ["Name", "Ch", 'On/Off', "Set V [V]", "Set I [mA]", "Out V [V]", "Out I [uA]"]
-
-# class TimerThread(QThread):
-#   timeout = pyqtSignal()
-#   waitTime = int(1)
-
-#   def SetTime(self, time_in_sec):
-#     self.waitTime = time_in_sec
-
-#   def run(self):
-#     timer = QTimer(self)
-#     timer.setInterval(self.waitTime)  # 1 second
-#     timer.timeout.connect(self.timeout.emit)
-#     timer.start()
-
 
 class MyWindow(QMainWindow):
   def __init__(self):
@@ -104,14 +90,39 @@ class MyWindow(QMainWindow):
     self.txtIOut = [[QLineEdit() for _ in range(rows)] for rows in nChPerMod]
     self.chkON = [[QCheckBox() for _ in range(rows)] for rows in nChPerMod]
 
-    # timer = TimerThread()
-    # timer.timeout.connect(self.on_timeout)
-    # timer.start()
-
     self.timer = QTimer(self)
     self.timer.timeout.connect(self.updateTimer)
-    self.time = 0
+    # self.time = 0
     self.timer.start(updateTime*1000)
+
+    #=========== database and refresh time
+    gLayout = QGridLayout()
+    layout.addLayout(gLayout)
+
+    lbIP = QLabel("Database IP : ", self)
+    lbIP.setAlignment(Qt.AlignmentFlag.AlignRight)
+    gLayout.addWidget(lbIP, 0, 0)
+    
+    self.txtIP = QLineEdit(self)
+    self.txtIP.setText("128.186.111.107")
+    self.txtIP.textChanged.connect(partial(self.TextChange, self.txtIP))
+    self.txtIP.returnPressed.connect(partial(self.UnSetTextColor, self.txtIP))
+    gLayout.addWidget(self.txtIP, 0, 1)
+
+    self.chkDB = QCheckBox("Enable", self)
+    gLayout.addWidget(self.chkDB, 0, 2)
+
+
+    lb1 = QLabel("Refresh period [sec] :", self)
+    lb1.setAlignment(Qt.AlignmentFlag.AlignRight)
+    gLayout.addWidget(lb1, 1, 0)
+    
+    self.txtRefresh = QLineEdit(self)
+    self.txtRefresh.setText(str(updateTime))
+    self.txtRefresh.textChanged.connect(partial(self.TextChange, self.txtRefresh))
+    self.txtRefresh.returnPressed.connect(self.SetTimer)
+    self.txtRefresh.returnPressed.connect(partial(self.UnSetTextColor, self.txtRefresh))
+    gLayout.addWidget(self.txtRefresh, 1, 1)
 
     #=========== set tab
     self.tabWidget = QTabWidget(self)
@@ -158,6 +169,9 @@ class MyWindow(QMainWindow):
             layout_tab.addWidget(self.txtV[k][i], 1+i, j)
 
             self.txtV[k][i].returnPressed.connect(partial(self.SetHV, k, i) )
+            self.txtV[k][i].returnPressed.connect(partial(self.UnSetTextColor, self.txtV[k][i]))
+            self.txtV[k][i].textChanged.connect(partial(self.TextChange, self.txtV[k][i]))
+            
           #------------ I set
           if j == 4:
             self.txtI[k][i].setText("{:.2f}".format(iList[sum(nChPerMod[:k]) + i]*1000))
@@ -165,6 +179,9 @@ class MyWindow(QMainWindow):
             layout_tab.addWidget(self.txtI[k][i], 1+i, j)
           
             self.txtI[k][i].returnPressed.connect(partial(self.SetI, k, i) )
+            self.txtI[k][i].returnPressed.connect(partial(self.UnSetTextColor, self.txtI[k][i]))
+            self.txtI[k][i].textChanged.connect(partial(self.TextChange, self.txtI[k][i]))
+
           #------------ V out
           if j == 5:
             self.txtVOut[k][i].setText("{:.2f}".format(outVList[sum(nChPerMod[:k]) + i]))
@@ -182,6 +199,85 @@ class MyWindow(QMainWindow):
             self.txtIOut[k][i].setStyleSheet("background-color: lightgrey;")
 
       self.tabWidget.addTab(tab, "Mod-" + str(k))
+    
+    #============= Save setting
+    sLayout = QGridLayout()
+    layout.addLayout(sLayout)
+
+    bLoad = QPushButton("Load", self)
+    bLoad.clicked.connect(self.LoadSetting)
+    sLayout.addWidget(bLoad, 0, 0)
+
+    self.txtFile = QLineEdit(self)
+    sLayout.addWidget(self.txtFile, 0, 1)
+
+    bSave = QPushButton("Save", self)
+    bSave.clicked.connect(self.SaveSetting)
+    sLayout.addWidget(bSave, 0, 3)
+  
+    #============= General Setting #TODO
+
+  ######################################################### slots
+  def SaveSetting(self):
+    fileName = self.txtFile.text()
+    if fileName == "" :
+      return
+    outfile = open(fileName, "w")
+    csv_writer = csv.writer(outfile)
+    for k in range(0, nMod):
+      for i, a in enumerate(modChList[k]) :
+        papap = [self.txtName[k][i].text(), "u"+str(modChList[k][i]), self.txtV[k][i].text(),self.txtI[k][i].text()]
+        csv_writer.writerow( papap  ) 
+    outfile.close()
+    self.txtFile.setText( fileName + " (Saved)")
+    msg_box = QMessageBox()
+    msg_box.setWindowTitle("Information")
+    msg_box.setText("Setting saved to " +  fileName + "as a csv file.")
+    msg_box.setIcon(QMessageBox.Icon.Information)
+    msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+    msg_box.exec()
+
+  def LoadSetting(self):
+    file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", "CSV Files (*.csv);;All Files (*)")
+        
+    if file_path:
+      infile = open(file_path, "r")
+      csv_reader = csv.reader(infile)
+      row_count = sum(1 for row in csv_reader)
+      infile.seek(0)
+      count = 0
+      for row in csv_reader:
+        ch = row[1]
+        if ch.startswith('u') and ch[1:].isdigit():
+          chID = int(ch[1:]) % 100
+          modID = int(int(ch[1:]) / 100) 
+          # print(str(modID) + "," + str(chID))
+
+          self.txtName[modID][chID].setText(row[0])
+          self.txtV[modID][chID].setText(row[2])
+          self.txtI[modID][chID].setText(row[3])
+
+          # print("Setting " + row[1] )
+          mpod.SetHV(int(ch[1:]), float(row[2]))
+          time.sleep(0.01)
+          mpod.SetCurrent(int(ch[1:]), float(row[3])/1000)
+          time.sleep(0.01)
+          count = count+1
+          self.txtFile.setText("Loading Setting, %d/%d ." % (count, row_count))
+          self.repaint()
+
+      self.txtFile.setText(file_path + " (Loaded)")
+
+  def UnSetTextColor(self, qLineEdit : QLineEdit):
+    qLineEdit.setStyleSheet("")
+
+  def TextChange(self, qLineEdit : QLineEdit):
+    qLineEdit.setStyleSheet("color : darkgreen;")
+
+  def SetTimer(self):
+    sec = float(self.txtRefresh.text())
+    self.timer.stop()
+    self.timer.start(int(sec * 1000))
 
   def SetHV(self, mod, ch):
     value = float(self.txtV[mod][ch].text())
@@ -219,10 +315,9 @@ class MyWindow(QMainWindow):
     if value == 3 :
       self.chkON[mod][ch].setChecked(False)
       self.chkON[mod][ch].setStyleSheet("background-color: red;")
-
-
+ 
   def updateTimer(self):
-    self.time += 1
+    # self.time += 1
     # print(f'Time: {self.time}')
     outVList = mpod.GetAllOutputHV()
     outIList = mpod.GetAllLC() 
