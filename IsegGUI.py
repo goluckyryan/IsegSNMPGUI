@@ -8,19 +8,19 @@ import socket
 import sys
 import time
 
-# import influxdb_client
-# from influxdb_client import InfluxDBClient, Point, WritePrecision
-# from influxdb_client.client.write_api import SYNCHRONOUS, ASYNCHRONOUS
+import influxdb_client
+from influxdb_client import InfluxDBClient, Point, WritePrecision
+from influxdb_client.client.write_api import SYNCHRONOUS, ASYNCHRONOUS
 
-# #------ database
-# with open('ISEG_TOKEN.txt', 'r') as f:
-#    token = f.readline().replace('\n', '')
+#------ database
+with open('ISEG_TOKEN.txt', 'r') as f:
+   token = f.readline().replace('\n', '')
 
-# org = "FSUFoxLab"
-# ip = "https://fsunuc.physics.fsu.edu/influx/"
-# write_client = influxdb_client.InfluxDBClient(url=ip, token=token, org=org)
-# bucket = "ISEG"
-# write_api = write_client.write_api(write_options=ASYNCHRONOUS)
+org = "FSUFoxLab"
+ip = "https://fsunuc.physics.fsu.edu/influx/"
+write_client = influxdb_client.InfluxDBClient(url=ip, token=token, org=org)
+bucket = "ISEG"
+write_api = write_client.write_api(write_options=ASYNCHRONOUS)
 
 #assign a port, to prevent the script run mulitple time
 s = socket.socket()
@@ -61,7 +61,7 @@ nChPerMod = []
 for k in range(0, nMod):
   nChPerMod.append(len(modChList[k]))
 nChannel = len(chList)
-updateTime = 1 #sec
+updateTime = 3 #sec
 
 # print(onOffList)
 
@@ -322,11 +322,21 @@ class MyWindow(QMainWindow):
     outVList = mpod.GetAllOutputHV()
     outIList = mpod.GetAllLC() 
     # print(outVList)
+
+    if self.chkDB.checkState() == Qt.CheckState.Checked:
+      points = []
+
     for k in range(0, nMod):
       for i, a in enumerate(modChList[k]) :
         self.txtVOut[k][i].setText("{:.2f}".format(outVList[sum(nChPerMod[:k]) + i]))
         self.txtIOut[k][i].setText("{:.2f}".format(outIList[sum(nChPerMod[:k]) + i]))
 
+        if self.chkDB.checkState() == Qt.CheckState.Checked:
+          points.append(Point("Voltage").tag("Ch",int(chList[i])).field("value",float(outVList[i])))
+          points.append(Point("LeakageCurrent").tag("Ch",int(chList[i])).field("value",float(outIList[i])))
+
+    if self.chkDB.checkState() == Qt.CheckState.Checked:
+      write_api.write(bucket=bucket, org=org, record=points)
 
 if __name__ == "__main__":
   app = QApplication(sys.argv)
