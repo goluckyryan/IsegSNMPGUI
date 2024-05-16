@@ -88,7 +88,7 @@ class Mpod:
 
   def IsHVOn(self, ch):
     if (self.isConnected == False ) : return 0
-    return self.SendCmd(0, "outputSwitch.u"+str(ch))
+    return extract_number_between_parentheses(self.SendCmd(0, "outputSwitch.u"+str(ch)))
 
   def GetHVRiseRate(self, ch):
     if (self.isConnected == False ) : return 0

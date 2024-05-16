@@ -187,26 +187,51 @@ class MyWindow(QMainWindow):
     value = float(self.txtV[mod][ch].text())
     print("mod : " +  str(mod) + ", ch : " + str(ch) + " | " +  str(value))
     mpod.SetHV( mod*100 + ch, value)
+    newValue = mpod.GetHV(mod*100+ch)
+    self.txtV[mod][ch].setText("{:.1f}".format(newValue))
 
   def SetI(self, mod, ch):
     value = float(self.txtI[mod][ch].text())
     print("mod : " +  str(mod) + ", ch : " + str(ch) + " | " +  str(value))
     mpod.SetCurrent( mod*100 + ch, value/1000.)
+    newValue = mpod.GetCurrent(mod*100+ch)
+    self.txtI[mod][ch].setText("{:.1f}".format(newValue))
 
   def SetOnOff(self, mod, ch):
     state = self.chkON[mod][ch].checkState()
-    print("mod : " +  str(mod) + ", ch : " + str(ch) + " | " +  str(state))
-    if state == Qt.Checked :
-      mpod.SwitchOnHV( mod*100 + ch, True)
+    if state ==  Qt.CheckState.Checked:
+      if onOffList[sum(nChPerMod[:mod]) + ch] == 3 :
+        mpod.SwitchOnHV(mod*100 + ch, 2)
+      mpod.SwitchOnHV( mod*100 + ch, 1)
+      onOffList[sum(nChPerMod[:mod]) + ch] = 1
     else:
-      mpod.SwitchOnHV( mod*100 + ch, False)
+      mpod.SwitchOnHV( mod*100 + ch, 0)
+      onOffList[sum(nChPerMod[:mod]) + ch] = 0
 
-  def on_timeout(self):
-    print("Timer timed out!")
+    value = mpod.IsHVOn(mod*100 + ch)
+    # print("mod : " +  str(mod) + ", ch : " + str(ch) + " | " +  str(state) + " | " + str(onOffList[sum(nChPerMod[:mod]) + ch]) + " | " + str(value))
+    if value == 0 :
+      self.chkON[mod][ch].setChecked(False)
+      self.chkON[mod][ch].setStyleSheet("")
+    if value == 1 :
+      self.chkON[mod][ch].setChecked(True)
+      self.chkON[mod][ch].setStyleSheet("")
+    if value == 3 :
+      self.chkON[mod][ch].setChecked(False)
+      self.chkON[mod][ch].setStyleSheet("background-color: red;")
+
 
   def updateTimer(self):
     self.time += 1
-    print(f'Time: {self.time}')
+    # print(f'Time: {self.time}')
+    outVList = mpod.GetAllOutputHV()
+    outIList = mpod.GetAllLC() 
+    # print(outVList)
+    for k in range(0, nMod):
+      for i, a in enumerate(modChList[k]) :
+        self.txtVOut[k][i].setText("{:.2f}".format(outVList[sum(nChPerMod[:k]) + i]))
+        self.txtIOut[k][i].setText("{:.2f}".format(outIList[sum(nChPerMod[:k]) + i]))
+
 
 if __name__ == "__main__":
   app = QApplication(sys.argv)
