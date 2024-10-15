@@ -332,8 +332,8 @@ class MyWindow(QMainWindow):
         self.txtIOut[k][i].setText("{:.2f}".format(outIList[sum(nChPerMod[:k]) + i] * 1e6))
 
         if self.chkDB.checkState() == Qt.CheckState.Checked:
-          points.append(Point("Voltage").tag("Ch",int(chList[i] + 100 * k)).field("value",float(outVList[i])))
-          points.append(Point("LeakageCurrent").tag("Ch",int(chList[i] + 100 * k)).field("value",float(outIList[i])))
+          points.append(Point("Voltage").tag("Ch",int(chList[i] + 100 * k)).field("value",float(outVList[sum(nChPerMod[:k]) + i])))
+          points.append(Point("LeakageCurrent").tag("Ch",int(chList[i] + 100 * k)).field("value",float(outIList[sum(nChPerMod[:k]) + i])))
 
     if self.chkDB.checkState() == Qt.CheckState.Checked:
       write_api.write(bucket=bucket, org=org, record=points)
