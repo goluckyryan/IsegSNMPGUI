@@ -13,8 +13,12 @@ from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS, ASYNCHRONOUS
 
 #------ database
-with open('ISEG_TOKEN.txt', 'r') as f:
-   token = f.readline().replace('\n', '')
+try:
+  with open('ISEG_TOKEN.txt', 'r') as f:
+    token = f.readline()
+except:
+    print("Error: ISEG_TOKEN.txt file not found.")
+    token = None  # Or assign a default value if needed
 
 org = "FSUFoxLab"
 ip = "https://fsunuc.physics.fsu.edu/influx/"
@@ -111,7 +115,9 @@ class MyWindow(QMainWindow):
 
     self.chkDB = QCheckBox("Enable", self)
     gLayout.addWidget(self.chkDB, 0, 2)
-
+    if token == None:
+      self.txtIP.setEnabled(False)
+      self.chkDB.setEnabled(False)
 
     lb1 = QLabel("Refresh period [sec] :", self)
     lb1.setAlignment(Qt.AlignmentFlag.AlignRight)
@@ -123,6 +129,10 @@ class MyWindow(QMainWindow):
     self.txtRefresh.returnPressed.connect(self.SetTimer)
     self.txtRefresh.returnPressed.connect(partial(self.UnSetTextColor, self.txtRefresh))
     gLayout.addWidget(self.txtRefresh, 1, 1)
+
+    self.AllChkOff = QPushButton("Switch all channels off.")
+    gLayout.addWidget(self.AllChkOff, 2, 1)
+    self.AllChkOff.clicked.connect(partial(self.SetAllOnOff))
 
     #=========== set tab
     self.tabWidget = QTabWidget(self)
@@ -138,16 +148,17 @@ class MyWindow(QMainWindow):
         qlb = QLabel(lb, tab)
         layout_tab.addWidget(qlb, 0, index)
 
+      initRow = 1
       for i, a in enumerate(modChList[k]) :
         for j, lb in enumerate(ColStrList) : 
           #------------ name
           if j == 0:
-            layout_tab.addWidget(self.txtName[k][i], 1+i, j)
+            layout_tab.addWidget(self.txtName[k][i], initRow + i, j)
           
           #------------ Ch
           if j == 1:
             qlb = QLabel(str(a - 100*k), tab)
-            layout_tab.addWidget(qlb, 1+i, j, alignment=Qt.AlignmentFlag.AlignCenter)
+            layout_tab.addWidget(qlb, initRow + i, j, alignment=Qt.AlignmentFlag.AlignCenter)
           
           #------------ On/Off
           if j == 2:
@@ -159,14 +170,14 @@ class MyWindow(QMainWindow):
               self.chkON[k][i].setChecked(False)
               self.chkON[k][i].setStyleSheet("background-color: red;")
             
-            layout_tab.addWidget(self.chkON[k][i], 1+i, j, alignment=Qt.AlignmentFlag.AlignCenter)
+            layout_tab.addWidget(self.chkON[k][i], initRow + i, j, alignment=Qt.AlignmentFlag.AlignCenter)
           
             self.chkON[k][i].clicked.connect(partial(self.SetOnOff, k, i))
           #------------ V set
           if j == 3:
             self.txtV[k][i].setText(str(hvList[sum(nChPerMod[:k]) + i]))
             self.txtV[k][i].setAlignment(Qt.AlignmentFlag.AlignRight)
-            layout_tab.addWidget(self.txtV[k][i], 1+i, j)
+            layout_tab.addWidget(self.txtV[k][i], initRow + i, j)
 
             self.txtV[k][i].returnPressed.connect(partial(self.SetHV, k, i) )
             self.txtV[k][i].returnPressed.connect(partial(self.UnSetTextColor, self.txtV[k][i]))
@@ -176,7 +187,7 @@ class MyWindow(QMainWindow):
           if j == 4:
             self.txtI[k][i].setText("{:.2f}".format(iList[sum(nChPerMod[:k]) + i]*1000))
             self.txtI[k][i].setAlignment(Qt.AlignmentFlag.AlignRight)
-            layout_tab.addWidget(self.txtI[k][i], 1+i, j)
+            layout_tab.addWidget(self.txtI[k][i], initRow + i, j)
           
             self.txtI[k][i].returnPressed.connect(partial(self.SetI, k, i) )
             self.txtI[k][i].returnPressed.connect(partial(self.UnSetTextColor, self.txtI[k][i]))
@@ -186,7 +197,7 @@ class MyWindow(QMainWindow):
           if j == 5:
             self.txtVOut[k][i].setText("{:.2f}".format(outVList[sum(nChPerMod[:k]) + i]))
             self.txtVOut[k][i].setAlignment(Qt.AlignmentFlag.AlignRight)
-            layout_tab.addWidget(self.txtVOut[k][i], 1+i, j)
+            layout_tab.addWidget(self.txtVOut[k][i], initRow + i, j)
             self.txtVOut[k][i].setReadOnly(True)
             self.txtVOut[k][i].setStyleSheet("background-color: lightgrey;")
           
@@ -194,7 +205,7 @@ class MyWindow(QMainWindow):
           if j == 6:
             self.txtIOut[k][i].setText("{:.2f}".format(outIList[sum(nChPerMod[:k]) + i]*1e6))
             self.txtIOut[k][i].setAlignment(Qt.AlignmentFlag.AlignRight)
-            layout_tab.addWidget(self.txtIOut[k][i], 1+i, j)
+            layout_tab.addWidget(self.txtIOut[k][i], initRow + i, j)
             self.txtIOut[k][i].setReadOnly(True)
             self.txtIOut[k][i].setStyleSheet("background-color: lightgrey;")
 
@@ -293,6 +304,19 @@ class MyWindow(QMainWindow):
     newValue = mpod.GetCurrent(mod*100+ch)
     self.txtI[mod][ch].setText("{:.1f}".format(newValue))
 
+  def SetAllOnOff(self):
+    for k in range(0, nMod):
+      for ch, a in enumerate(modChList[k]) :
+        state = self.chkON[k][ch].checkState()
+        if state ==  Qt.CheckState.Checked:
+          print("Switching off Mod-%d, ch-%d" % (k, ch))
+          mpod.SwitchOnHV( int(k) * 100 + int(ch), 0)
+          self.chkON[k][ch].setChecked(False)
+          onOffList[sum(nChPerMod[:k]) + ch] = 0
+          time.sleep(0.01) # wait 10 mili-sec
+
+    print("========== done")
+
   def SetOnOff(self, mod, ch):
     state = self.chkON[mod][ch].checkState()
     if state ==  Qt.CheckState.Checked:
@@ -305,7 +329,7 @@ class MyWindow(QMainWindow):
       onOffList[sum(nChPerMod[:mod]) + ch] = 0
 
     value = mpod.IsHVOn(mod*100 + ch)
-    # print("mod : " +  str(mod) + ", ch : " + str(ch) + " | " +  str(state) + " | " + str(onOffList[sum(nChPerMod[:mod]) + ch]) + " | " + str(value))
+    print("mod : " +  str(mod) + ", ch : " + str(ch) + " | " +  str(state) + " | " + str(onOffList[sum(nChPerMod[:mod]) + ch]) + " | " + str(value))
     if value == 0 :
       self.chkON[mod][ch].setChecked(False)
       self.chkON[mod][ch].setStyleSheet("")
@@ -328,12 +352,15 @@ class MyWindow(QMainWindow):
 
     for k in range(0, nMod):
       for i, a in enumerate(modChList[k]) :
-        self.txtVOut[k][i].setText("{:.2f}".format(outVList[sum(nChPerMod[:k]) + i]))
-        self.txtIOut[k][i].setText("{:.2f}".format(outIList[sum(nChPerMod[:k]) + i] * 1e6))
+
+        vout = outVList[sum(nChPerMod[:k]) + i] # in Volt
+        iout = outIList[sum(nChPerMod[:k]) + i] # in Amp
+        self.txtVOut[k][i].setText("{:.2f}".format(vout))
+        self.txtIOut[k][i].setText("{:.2f}".format(iout * 1e6))
 
         if self.chkDB.checkState() == Qt.CheckState.Checked:
-          points.append(Point("Voltage").tag("Ch",int(chList[i] + 100 * k)).field("value",float(outVList[i])))
-          points.append(Point("LeakageCurrent").tag("Ch",int(chList[i] + 100 * k)).field("value",float(outIList[i])))
+          points.append(Point("Voltage").tag("Ch",int(chList[i] + 100 * k)).field("value",float(vout)))
+          points.append(Point("LeakageCurrent").tag("Ch",int(chList[i] + 100 * k)).field("value",float(iout)))
 
     if self.chkDB.checkState() == Qt.CheckState.Checked:
       write_api.write(bucket=bucket, org=org, record=points)

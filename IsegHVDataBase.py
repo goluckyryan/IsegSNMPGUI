@@ -10,8 +10,12 @@ from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS, ASYNCHRONOUS
 
 #------ database
-with open('ISEG_TOKEN.txt', 'r') as f:
-   token = f.readline()
+try:
+  with open('ISEG_TOKEN.txt', 'r') as f:
+    token = f.readline()
+except:
+    print("Error: ISEG_TOKEN.txt file not found.")
+    token = None  # Or assign a default value if needed
 
 org = "FSUFoxLab"
 ip = "https://fsunuc.physics.fsu.edu/influx/"

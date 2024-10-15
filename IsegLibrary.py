@@ -15,9 +15,14 @@ class Mpod:
   def __init__(self, ip):
     #check SNMP version
     version = str(subprocess.check_output(['snmpwalk', '-V'], stderr=subprocess.STDOUT).decode("ascii"))
-    versionNum = float(version[17:-3])
+    match = re.search(r"NET-SNMP version: (\d+\.\d+\.\d+(?:\.\d+)?(?:\.\w+)?)", version)
+    if match:
+      versionNum = match.group(1)
+      print("Version:", version)
+    else:
+      print("Error: Could not extract version number." + version)
     self.IP = ip
-    if versionNum < 5.8 :
+    if versionNum < "5.8" :
       print(">>>>>> snmp version < 5.8, does not support high precision.")
       self.cmd0Str = "-v2c -m +WIENER-CRATE-MIB -c guru %s " % self.IP
     else:
