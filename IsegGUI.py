@@ -22,9 +22,12 @@ except:
 
 org = "FSUFoxLab"
 ip = "https://fsunuc.physics.fsu.edu/influx/"
-write_client = influxdb_client.InfluxDBClient(url=ip, token=token, org=org)
+# databaseIP="128.186.111.107"
+databaseIP=ip
+write_client = influxdb_client.InfluxDBClient(url=databaseIP, token=token, org=org)
 bucket = "ISEG"
-write_api = write_client.write_api(write_options=ASYNCHRONOUS)
+# write_api = write_client.write_api(write_options=ASYNCHRONOUS)
+write_api = write_client.write_api(write_options=SYNCHRONOUS)
 
 #assign a port, to prevent the script run mulitple time
 s = socket.socket()
@@ -42,7 +45,6 @@ else :
 #Sergio MPOD 128.186.111.101
 #ANASEN MPOD 128.186.111.208
 
-databaseIP="128.186.111.108"
 pushToDB = False
 
 #===================== GUI
@@ -108,7 +110,7 @@ class MyWindow(QMainWindow):
     gLayout.addWidget(lbIP, 0, 0)
     
     self.txtIP = QLineEdit(self)
-    self.txtIP.setText("128.186.111.107")
+    self.txtIP.setText(databaseIP)
     self.txtIP.textChanged.connect(partial(self.TextChange, self.txtIP))
     self.txtIP.returnPressed.connect(partial(self.UnSetTextColor, self.txtIP))
     gLayout.addWidget(self.txtIP, 0, 1)
@@ -363,6 +365,7 @@ class MyWindow(QMainWindow):
           points.append(Point("LeakageCurrent").tag("Ch",int(chList[i] + 100 * k)).field("value",float(outIList[sum(nChPerMod[:k]) + i])))
 
     if self.chkDB.checkState() == Qt.CheckState.Checked:
+      
       write_api.write(bucket=bucket, org=org, record=points)
 
 if __name__ == "__main__":
