@@ -132,9 +132,13 @@ class MyWindow(QMainWindow):
     self.txtRefresh.returnPressed.connect(partial(self.UnSetTextColor, self.txtRefresh))
     gLayout.addWidget(self.txtRefresh, 1, 1)
 
+    self.AllChkOn = QPushButton("Switch all channels On.")
+    gLayout.addWidget(self.AllChkOn, 2, 1)
+    self.AllChkOn.clicked.connect(partial(self.SwitchOnAllCh))
+
     self.AllChkOff = QPushButton("Switch all channels off.")
-    gLayout.addWidget(self.AllChkOff, 2, 1)
-    self.AllChkOff.clicked.connect(partial(self.SetAllOnOff))
+    gLayout.addWidget(self.AllChkOff, 3, 1)
+    self.AllChkOff.clicked.connect(partial(self.SwitchOffAllCh))
 
     #=========== set tab
     self.tabWidget = QTabWidget(self)
@@ -306,7 +310,20 @@ class MyWindow(QMainWindow):
     newValue = mpod.GetCurrent(mod*100+ch)
     self.txtI[mod][ch].setText("{:.1f}".format(newValue))
 
-  def SetAllOnOff(self):
+  def SwitchOnAllCh(self):
+    for k in range(0, nMod):
+      for ch, a in enumerate(modChList[k]) :
+        state = self.chkON[k][ch].checkState()
+        if state !=  Qt.CheckState.Checked:
+          print("Switching On Mod-%d, ch-%d" % (k, ch))
+          mpod.SwitchOnHV( int(k) * 100 + int(ch), 1)
+          self.chkON[k][ch].setChecked(True)
+          onOffList[sum(nChPerMod[:k]) + ch] = 1
+          time.sleep(0.01) # wait 10 mili-sec
+
+    print("========== done")
+
+  def SwitchOffAllCh(self):
     for k in range(0, nMod):
       for ch, a in enumerate(modChList[k]) :
         state = self.chkON[k][ch].checkState()
