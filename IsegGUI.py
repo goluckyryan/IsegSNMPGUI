@@ -21,19 +21,11 @@ except:
     token = None  # Or assign a default value if needed
 
 org = "FSUFoxLab"
-ip = "https://fsunuc.physics.fsu.edu/influx/"
-# databaseIP="128.186.111.107"
-databaseIP=ip
+databaseIP="https://fsunuc.physics.fsu.edu/influx/"
 write_client = influxdb_client.InfluxDBClient(url=databaseIP, token=token, org=org)
 bucket = "ISEG"
 # write_api = write_client.write_api(write_options=ASYNCHRONOUS)
 write_api = write_client.write_api(write_options=SYNCHRONOUS)
-
-#assign a port, to prevent the script run mulitple time
-s = socket.socket()
-host = socket.gethostname()
-port = 4305
-s.bind((host,port))
 
 nArg = len(sys.argv)
 
@@ -46,6 +38,14 @@ else :
 #ANASEN MPOD 128.186.111.208
 
 pushToDB = False
+
+
+#============== assign a port, to prevent the script run mulitple time
+s = socket.socket()
+host = socket.gethostname()
+port = 4300 + int(IP[-3:])
+print("using port " + str(port))
+s.bind((host,port))
 
 #===================== GUI
 
