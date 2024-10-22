@@ -2,7 +2,7 @@
 
 in Ubuntu 20+
 
-    ~>sudo apt install python3-pyqt6 snmp snmp-mibs-downloader curl python3-pip
+    ~>sudo apt install python3-pyqt6 snmp snmp-mibs-downloader curl python3-pip libxcb-cursor0
     ~>python3 -m pip install pyqt6 influxdb-client
 
 also, download the https://fsunuc.physics.fsu.edu/wiki/images/5/53/WIENER-CRATE-MIB.txt and put in /usr/share/snmp/mibs/
