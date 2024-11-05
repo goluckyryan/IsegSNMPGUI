@@ -271,8 +271,11 @@ class MyWindow(QMainWindow):
           # print(str(modID) + "," + str(chID))
 
           self.txtName[modID][chID].setText(row[0])
+          self.txtName[modID][chID].setStyleSheet("")
           self.txtV[modID][chID].setText(row[2])
+          self.txtV[modID][chID].setStyleSheet("")
           self.txtI[modID][chID].setText(row[3])
+          self.txtI[modID][chID].setStyleSheet("")
 
           # print("Setting " + row[1] )
           mpod.SetHV(int(ch[1:]), float(row[2]))
@@ -307,8 +310,8 @@ class MyWindow(QMainWindow):
     value = float(self.txtI[mod][ch].text())
     print("mod : " +  str(mod) + ", ch : " + str(ch) + " | " +  str(value))
     mpod.SetCurrent( mod*100 + ch, value/1000.)
-    newValue = mpod.GetCurrent(mod*100+ch)
-    self.txtI[mod][ch].setText("{:.1f}".format(newValue))
+    newValue = mpod.GetCurrent(mod*100+ch) * 1000.
+    self.txtI[mod][ch].setText("{:.2f}".format(newValue))
 
   def SwitchOnAllCh(self):
     for k in range(0, nMod):
