@@ -20,10 +20,10 @@ except:
     print("Error: ISEG_TOKEN.txt file not found.")
     token = None  # Or assign a default value if needed
 
-org = "FSUFoxLab"
-databaseIP="https://fsunuc.physics.fsu.edu/influx/"
+org = ""
+databaseIP="192.168.1.193"
 write_client = influxdb_client.InfluxDBClient(url=databaseIP, token=token, org=org)
-bucket = "ISEG"
+bucket = ""
 # write_api = write_client.write_api(write_options=ASYNCHRONOUS)
 write_api = write_client.write_api(write_options=SYNCHRONOUS)
 
@@ -43,7 +43,7 @@ pushToDB = False
 #============== assign a port, to prevent the script run mulitple time
 s = socket.socket()
 host = socket.gethostname()
-port = 4300 + int(IP[-3:])
+port = 4300 + int(IP[-2:])
 print("using port " + str(port))
 s.bind((host,port))
 
@@ -62,20 +62,25 @@ onOffList = mpod.GetAllOnOff()
 
 modChList = iseg.SplitChList(chList)
 
+
 nMod = len(modChList)
+modIndex = []
 nChPerMod = []
 for k in range(0, nMod):
+  modIndex.append(int(modChList[k][0]/100))
   nChPerMod.append(len(modChList[k]))
 nChannel = len(chList)
 updateTime = 3 #sec
 
+# print("######")
+# print(iList)
 # print(onOffList)
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QCheckBox, QLineEdit, QLabel, QVBoxLayout, QWidget, QTabWidget, QGridLayout, QMessageBox, QFileDialog, QProgressBar
 from PyQt6.QtCore import Qt, QThread, QTimer, QObject, pyqtSignal
 from functools import partial
 
-ColStrList = ["Name", "Ch", 'On/Off', "Set V [V]", "Set I [mA]", "Out V [V]", "Out I [uA]"]
+ColStrList = ["Name", "Ch", 'On/Off', "Set V [V]", "Set I [uA]", "Out V [V]", "Out I [uA]"]
 
 class MyWindow(QMainWindow):
   def __init__(self):
@@ -117,9 +122,9 @@ class MyWindow(QMainWindow):
 
     self.chkDB = QCheckBox("Enable", self)
     gLayout.addWidget(self.chkDB, 0, 2)
-    if token == None:
-      self.txtIP.setEnabled(False)
-      self.chkDB.setEnabled(False)
+    # if token == None:
+    #   self.txtIP.setEnabled(False)
+    #   self.chkDB.setEnabled(False)
 
     lb1 = QLabel("Refresh period [sec] :", self)
     lb1.setAlignment(Qt.AlignmentFlag.AlignRight)
@@ -144,7 +149,7 @@ class MyWindow(QMainWindow):
     self.tabWidget = QTabWidget(self)
     layout.addWidget(self.tabWidget)
 
-    for k in range(0, nMod):
+    for k in range(0, nMod): # k is running from 0, 1, 2, ....
       tab = QWidget(self)
       layout_tab = QGridLayout()
       layout_tab.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -155,7 +160,7 @@ class MyWindow(QMainWindow):
         layout_tab.addWidget(qlb, 0, index)
 
       initRow = 1
-      for i, a in enumerate(modChList[k]) :
+      for i, a in enumerate(modChList[k]) : # a is the channel ID
         for j, lb in enumerate(ColStrList) : 
           #------------ name
           if j == 0:
@@ -163,7 +168,8 @@ class MyWindow(QMainWindow):
           
           #------------ Ch
           if j == 1:
-            qlb = QLabel(str(a - 100*k), tab)
+            # print(f"{a}, {k}, {a-100*k}")
+            qlb = QLabel(str(a), tab)
             layout_tab.addWidget(qlb, initRow + i, j, alignment=Qt.AlignmentFlag.AlignCenter)
           
           #------------ On/Off
@@ -191,7 +197,7 @@ class MyWindow(QMainWindow):
             
           #------------ I set
           if j == 4:
-            self.txtI[k][i].setText("{:.2f}".format(iList[sum(nChPerMod[:k]) + i]*1000))
+            self.txtI[k][i].setText("{:.2f}".format(iList[sum(nChPerMod[:k]) + i]*1e6))
             self.txtI[k][i].setAlignment(Qt.AlignmentFlag.AlignRight)
             layout_tab.addWidget(self.txtI[k][i], initRow + i, j)
           
@@ -215,7 +221,7 @@ class MyWindow(QMainWindow):
             self.txtIOut[k][i].setReadOnly(True)
             self.txtIOut[k][i].setStyleSheet("background-color: lightgrey;")
 
-      self.tabWidget.addTab(tab, "Mod-" + str(k))
+      self.tabWidget.addTab(tab, "Mod-" + str(modIndex[k]))
     
     #============= Save setting
     sLayout = QGridLayout()
@@ -299,19 +305,19 @@ class MyWindow(QMainWindow):
     self.timer.stop()
     self.timer.start(int(sec * 1000))
 
-  def SetHV(self, mod, ch):
-    value = float(self.txtV[mod][ch].text())
-    print("mod : " +  str(mod) + ", ch : " + str(ch) + " | " +  str(value))
-    mpod.SetHV( mod*100 + ch, value)
-    newValue = mpod.GetHV(mod*100+ch)
-    self.txtV[mod][ch].setText("{:.1f}".format(newValue))
+  def SetHV(self, k, ch):
+    value = float(self.txtV[k][ch].text())
+    print("mod : " +  str(modIndex[k]) + ", ch : " + str(ch) + " | " +  str(value))
+    mpod.SetHV( modIndex[k]*100 + ch, value)
+    newValue = mpod.GetHV(modIndex[k]*100+ch)
+    self.txtV[k][ch].setText("{:.1f}".format(newValue))
 
-  def SetI(self, mod, ch):
-    value = float(self.txtI[mod][ch].text())
-    print("mod : " +  str(mod) + ", ch : " + str(ch) + " | " +  str(value))
-    mpod.SetCurrent( mod*100 + ch, value/1000.)
-    newValue = mpod.GetCurrent(mod*100+ch) * 1000.
-    self.txtI[mod][ch].setText("{:.2f}".format(newValue))
+  def SetI(self, k, ch):
+    value = float(self.txtI[k][ch].text())
+    print("mod : " +  str(modIndex[k]) + ", ch : " + str(ch) + " | " +  str(value))
+    mpod.SetCurrent( modIndex[k]*100 + ch, value/1e6)
+    newValue = mpod.GetCurrent(modIndex[k]*100+ch) * 1e6
+    self.txtI[k][ch].setText("{:.2f}".format(newValue))
 
   def SwitchOnAllCh(self):
     for k in range(0, nMod):
@@ -332,35 +338,35 @@ class MyWindow(QMainWindow):
         state = self.chkON[k][ch].checkState()
         if state ==  Qt.CheckState.Checked:
           print("Switching off Mod-%d, ch-%d" % (k, ch))
-          mpod.SwitchOnHV( int(k) * 100 + int(ch), 0)
+          mpod.SwitchOnHV( int(modIndex[k]) * 100 + int(ch), 0)
           self.chkON[k][ch].setChecked(False)
           onOffList[sum(nChPerMod[:k]) + ch] = 0
           time.sleep(0.01) # wait 10 mili-sec
 
     print("========== done")
 
-  def SetOnOff(self, mod, ch):
-    state = self.chkON[mod][ch].checkState()
+  def SetOnOff(self, k, ch):
+    state = self.chkON[k][ch].checkState()
     if state ==  Qt.CheckState.Checked:
-      if onOffList[sum(nChPerMod[:mod]) + ch] == 3 :
-        mpod.SwitchOnHV(mod*100 + ch, 2)
-      mpod.SwitchOnHV( mod*100 + ch, 1)
-      onOffList[sum(nChPerMod[:mod]) + ch] = 1
+      if onOffList[sum(nChPerMod[:k]) + ch] == 3 :
+        mpod.SwitchOnHV(modIndex[k]*100 + ch, 2)
+      mpod.SwitchOnHV( modIndex[k]*100 + ch, 1)
+      onOffList[sum(nChPerMod[:k]) + ch] = 1
     else:
-      mpod.SwitchOnHV( mod*100 + ch, 0)
-      onOffList[sum(nChPerMod[:mod]) + ch] = 0
+      mpod.SwitchOnHV( modIndex[k]*100 + ch, 0)
+      onOffList[sum(nChPerMod[:k]) + ch] = 0
 
-    value = mpod.IsHVOn(mod*100 + ch)
-    print("mod : " +  str(mod) + ", ch : " + str(ch) + " | " +  str(state) + " | " + str(onOffList[sum(nChPerMod[:mod]) + ch]) + " | " + str(value))
+    value = mpod.IsHVOn(modIndex[k]*100 + ch)
+    print("mod : " +  str(modIndex[k]) + ", ch : " + str(ch) + " | " +  str(state) + " | " + str(onOffList[sum(nChPerMod[:k]) + ch]) + " | " + str(value))
     if value == 0 :
-      self.chkON[mod][ch].setChecked(False)
-      self.chkON[mod][ch].setStyleSheet("")
+      self.chkON[k][ch].setChecked(False)
+      self.chkON[k][ch].setStyleSheet("")
     if value == 1 :
-      self.chkON[mod][ch].setChecked(True)
-      self.chkON[mod][ch].setStyleSheet("")
+      self.chkON[k][ch].setChecked(True)
+      self.chkON[k][ch].setStyleSheet("")
     if value == 3 :
-      self.chkON[mod][ch].setChecked(False)
-      self.chkON[mod][ch].setStyleSheet("background-color: red;")
+      self.chkON[k][ch].setChecked(False)
+      self.chkON[k][ch].setStyleSheet("background-color: red;")
  
   def updateTimer(self):
     # self.time += 1
