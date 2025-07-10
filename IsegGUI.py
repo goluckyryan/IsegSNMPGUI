@@ -20,12 +20,15 @@ except:
     print("Error: ISEG_TOKEN.txt file not found.")
     token = None  # Or assign a default value if needed
 
-org = ""
+useInfluxDBv1 = True
 databaseIP="192.168.1.193"
-write_client = influxdb_client.InfluxDBClient(url=databaseIP, token=token, org=org)
+org = ""
 bucket = ""
-# write_api = write_client.write_api(write_options=ASYNCHRONOUS)
-write_api = write_client.write_api(write_options=SYNCHRONOUS)
+
+if useInfluxDBv1 == False :
+  write_client = influxdb_client.InfluxDBClient(url=databaseIP, token=token, org=org)
+  # write_api = write_client.write_api(write_options=ASYNCHRONOUS)
+  write_api = write_client.write_api(write_options=SYNCHRONOUS)
 
 nArg = len(sys.argv)
 
@@ -122,9 +125,9 @@ class MyWindow(QMainWindow):
 
     self.chkDB = QCheckBox("Enable", self)
     gLayout.addWidget(self.chkDB, 0, 2)
-    # if token == None:
-    #   self.txtIP.setEnabled(False)
-    #   self.chkDB.setEnabled(False)
+    if token == None and useInfluxDBv1 == False:
+      self.txtIP.setEnabled(False)
+      self.chkDB.setEnabled(False)
 
     lb1 = QLabel("Refresh period [sec] :", self)
     lb1.setAlignment(Qt.AlignmentFlag.AlignRight)
@@ -370,12 +373,12 @@ class MyWindow(QMainWindow):
  
   def updateTimer(self):
     # self.time += 1
-    # print(f'Time: {self.time}')
+    # print(f'Time: {time.time()}')
     outVList = mpod.GetAllOutputHV()
     outIList = mpod.GetAllLC() 
     # print(outVList)
 
-    if self.chkDB.checkState() == Qt.CheckState.Checked:
+    if self.chkDB.checkState() == Qt.CheckState.Checked and useInfluxDBv1 == False:
       points = []
 
     for k in range(0, nMod):
@@ -386,13 +389,30 @@ class MyWindow(QMainWindow):
         self.txtVOut[k][i].setText("{:.2f}".format(vout))
         self.txtIOut[k][i].setText("{:.2f}".format(iout * 1e6))
 
-        if self.chkDB.checkState() == Qt.CheckState.Checked:
+        # print(f"{k}-{a},{vout:.2f}")
+
+        if useInfluxDBv1 == False and self.chkDB.checkState() == Qt.CheckState.Checked :
           points.append(Point("Voltage").tag("Ch",int(chList[i] + 100 * k)).field("value",float(outVList[sum(nChPerMod[:k]) + i])))
           points.append(Point("LeakageCurrent").tag("Ch",int(chList[i] + 100 * k)).field("value",float(outIList[sum(nChPerMod[:k]) + i])))
 
-    if self.chkDB.checkState() == Qt.CheckState.Checked:
-      
+    if useInfluxDBv1 == False and self.chkDB.checkState() == Qt.CheckState.Checked :
       write_api.write(bucket=bucket, org=org, record=points)
+
+    if useInfluxDBv1 == True and  self.chkDB.checkState() == Qt.CheckState.Checked:
+      print("pushing data to influxDB")
+      with open("output.txt", "w") as f:
+        for i, ch in enumerate(chList):
+          det = ch % 100
+          module = ch // 100
+          line = f"HV,Det={det},Module={module} value={outVList[i]:.3f}\n"
+          f.write(line)
+          line = f"LC,Det={det},Module={module} value={outIList[i]*1e6:.3f}\n"
+          f.write(line)
+      
+      DB_BashCommand_Mac='curl -sS -i -XPOST "http://%s:8086/write?db=testing" --data-binary @output.txt --speed-time 5 --speed-limit 1000' % databaseIP
+      os.system(DB_BashCommand_Mac)
+
+
 
 if __name__ == "__main__":
   app = QApplication(sys.argv)
