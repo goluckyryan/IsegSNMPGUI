@@ -32,16 +32,15 @@ if useInfluxDBv1 == False :
 
 nArg = len(sys.argv)
 
-if nArg > 1 :
-  IP = sys.argv[1]
-else :
-  IP = input('Mpod IP address to connect : ')
-
-#Sergio MPOD 128.186.111.101
-#ANASEN MPOD 128.186.111.208
+if nArg == 1 :
+  IP = "192.168.1.155"
+else:
+  if nArg > 1 :
+    IP = sys.argv[1]
+  else :
+    IP = input('Mpod IP address to connect : ')
 
 pushToDB = False
-
 
 #============== assign a port, to prevent the script run mulitple time
 s = socket.socket()
