@@ -91,6 +91,8 @@ class MyWindow(QMainWindow):
 
     self.setWindowTitle("Iseg Controller (" +  str(IP) + ")")
     self.setGeometry(100, 100, 500, 200)
+
+    self.setStyleSheet("background-color: rgb(207, 244, 181);")
   
     widget = QWidget()
     layout = QVBoxLayout()
@@ -140,13 +142,17 @@ class MyWindow(QMainWindow):
     self.txtRefresh.returnPressed.connect(partial(self.UnSetTextColor, self.txtRefresh))
     gLayout.addWidget(self.txtRefresh, 1, 1)
 
-    self.AllChkOn = QPushButton("Switch all channels On.")
+    self.AllChkOn = QPushButton("Switch all (V>0) channels On.")
     gLayout.addWidget(self.AllChkOn, 2, 1)
     self.AllChkOn.clicked.connect(partial(self.SwitchOnAllCh))
 
     self.AllChkOff = QPushButton("Switch all channels off.")
     gLayout.addWidget(self.AllChkOff, 3, 1)
     self.AllChkOff.clicked.connect(partial(self.SwitchOffAllCh))
+
+    self.forceUpdate = QPushButton("Update all settings.")
+    gLayout.addWidget(self.forceUpdate, 4, 1)
+    self.forceUpdate.clicked.connect(partial(self.UpdateAllSettings))
 
     #=========== set tab
     self.tabWidget = QTabWidget(self)
@@ -326,9 +332,11 @@ class MyWindow(QMainWindow):
     for k in range(0, nMod):
       for ch, a in enumerate(modChList[k]) :
         state = self.chkON[k][ch].checkState()
+        if float(self.txtV[k][ch].text()) == 0 :
+          continue
         if state !=  Qt.CheckState.Checked:
           print("Switching On Mod-%d, ch-%d" % (k, ch))
-          mpod.SwitchOnHV( int(k) * 100 + int(ch), 1)
+          mpod.SwitchOnHV( int(modIndex[k]) * 100 + int(ch), 1)
           self.chkON[k][ch].setChecked(True)
           onOffList[sum(nChPerMod[:k]) + ch] = 1
           time.sleep(0.01) # wait 10 mili-sec
@@ -370,6 +378,16 @@ class MyWindow(QMainWindow):
     if value == 3 :
       self.chkON[k][ch].setChecked(False)
       self.chkON[k][ch].setStyleSheet("background-color: red;")
+
+  def UpdateAllSettings(self):
+    print("Update all settings......")
+    hvList = mpod.GetAllHV()    # get all V
+    iList = mpod.GetAllCurrent() # get all current
+
+    for k in range(0, nMod):
+      for i, a in enumerate(modChList[k]) :
+        self.txtV[k][i].setText(str(hvList[sum(nChPerMod[:k]) + i]))
+        self.txtI[k][i].setText("{:.2f}".format(iList[sum(nChPerMod[:k]) + i]*1e6))
  
   def updateTimer(self):
     # self.time += 1
