@@ -126,9 +126,11 @@ class MyWindow(QMainWindow):
 
     self.chkDB = QCheckBox("Enable", self)
     gLayout.addWidget(self.chkDB, 0, 2)
+    self.chkDB.setChecked(True)
     if token == None and useInfluxDBv1 == False:
       self.txtIP.setEnabled(False)
       self.chkDB.setEnabled(False)
+      self.chkDB.setChecked(False)
 
     lb1 = QLabel("Refresh period [sec] :", self)
     lb1.setAlignment(Qt.AlignmentFlag.AlignRight)

@@ -15,6 +15,12 @@ install snmp, also
 
 also put the https://fsunuc.physics.fsu.edu/wiki/images/5/53/WIENER-CRATE-MIB.txt and put in /usr/share/snmp/mibs
 
+For homebrew snmp, need to put in homebrew snmp share folder. 
+
+If the system already has old snmp, can replace it with the homebrew one by 
+
+export PATH="/usr/local/opt/net-snmp/bin/:$PATH"
+
 # Usage
 
     ~>python3 IsegGUI.py <IP>
