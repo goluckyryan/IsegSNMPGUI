@@ -2,7 +2,8 @@
 
 import IsegLibrary as iseg
 import os
-import datetime
+#import datetime
+from datetime import datetime
 import csv
 import socket
 import sys
@@ -69,8 +70,9 @@ nMod = len(modChList)
 modIndex = []
 nChPerMod = []
 for k in range(0, nMod):
-  modIndex.append(int(modChList[k][0]/100))
+  modIndex.append(int(modChList[k][0]/100)) #for telling MOD
   nChPerMod.append(len(modChList[k]))
+  print(f"{modChList[k][0]} | modIndex {modIndex[-1]}, nChPerMod {nChPerMod[-1]}")
 nChannel = len(chList)
 updateTime = 3 #sec
 
@@ -78,7 +80,7 @@ updateTime = 3 #sec
 # print(iList)
 # print(onOffList)
 
-from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QCheckBox, QLineEdit, QLabel, QVBoxLayout, QWidget, QTabWidget, QGridLayout, QMessageBox, QFileDialog, QProgressBar
+from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QCheckBox, QLineEdit, QLabel, QVBoxLayout, QWidget, QTabWidget, QGridLayout, QMessageBox, QFileDialog
 from PyQt6.QtCore import Qt, QThread, QTimer, QObject, pyqtSignal
 from functools import partial
 
@@ -109,6 +111,7 @@ class MyWindow(QMainWindow):
     self.timer.timeout.connect(self.updateTimer)
     # self.time = 0
     self.timer.start(updateTime*1000)
+    self.pauseUpdate = False
 
     #=========== database and refresh time
     gLayout = QGridLayout()
@@ -175,7 +178,9 @@ class MyWindow(QMainWindow):
           #------------ name
           if j == 0:
             layout_tab.addWidget(self.txtName[k][i], initRow + i, j)
-          
+            self.txtName[k][i].returnPressed.connect(partial(self.SetChName, k, i))
+            self.txtName[k][i].textChanged.connect(partial(self.TextChange, self.txtName[k][i]))
+
           #------------ Ch
           if j == 1:
             # print(f"{a}, {k}, {a-100*k}")
@@ -237,7 +242,7 @@ class MyWindow(QMainWindow):
     sLayout = QGridLayout()
     layout.addLayout(sLayout)
 
-    bLoad = QPushButton("Load", self)
+    bLoad = QPushButton("Load && Set", self)
     bLoad.clicked.connect(self.LoadSetting)
     sLayout.addWidget(bLoad, 0, 0)
 
@@ -254,7 +259,16 @@ class MyWindow(QMainWindow):
   def SaveSetting(self):
     fileName = self.txtFile.text()
     if fileName == "" :
-      return
+      fileName, _ = QFileDialog.getSaveFileName(
+        self,
+        "Save File",
+        "",
+        "CSV Files (*.csv);;All Files (*)"
+      )
+      if fileName :
+        self.txtFile.setText(fileName)
+      else:
+        return
     outfile = open(fileName, "w")
     csv_writer = csv.writer(outfile)
     for k in range(0, nMod):
@@ -262,13 +276,13 @@ class MyWindow(QMainWindow):
         papap = [self.txtName[k][i].text(), "u"+str(modChList[k][i]), self.txtV[k][i].text(),self.txtI[k][i].text()]
         csv_writer.writerow( papap  ) 
     outfile.close()
-    self.txtFile.setText( fileName + " (Saved)")
-    msg_box = QMessageBox()
-    msg_box.setWindowTitle("Information")
-    msg_box.setText("Setting saved to " +  fileName + "as a csv file.")
-    msg_box.setIcon(QMessageBox.Icon.Information)
-    msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
-    msg_box.exec()
+    self.txtFile.setStyleSheet("")
+    # msg_box = QMessageBox()
+    # msg_box.setWindowTitle("Information")
+    # msg_box.setText("Setting saved to " +  fileName + " as a csv file.")
+    # msg_box.setIcon(QMessageBox.Icon.Information)
+    # msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+    # msg_box.exec()
 
   def LoadSetting(self):
     file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", "CSV Files (*.csv);;All Files (*)")
@@ -279,12 +293,21 @@ class MyWindow(QMainWindow):
       row_count = sum(1 for row in csv_reader)
       infile.seek(0)
       count = 0
+      uiModIndex = 0 #if uiModID change, uiModIndex increase by 1
+      oldUIModID = 0 # modID always start from zero. 
+
+      self.pauseUpdate = True
       for row in csv_reader:
         ch = row[1]
         if ch.startswith('u') and ch[1:].isdigit():
           chID = int(ch[1:]) % 100
-          modID = int(int(ch[1:]) / 100) 
-          # print(str(modID) + "," + str(chID))
+          modID = int(int(ch[1:]) / 100)
+
+          if modID != oldUIModID :
+            oldUIModID = modID
+            uiModIndex = uiModIndex + 1
+
+          modID = uiModIndex #lazy way
 
           self.txtName[modID][chID].setText(row[0])
           self.txtName[modID][chID].setStyleSheet("")
@@ -296,13 +319,15 @@ class MyWindow(QMainWindow):
           # print("Setting " + row[1] )
           mpod.SetHV(int(ch[1:]), float(row[2]))
           time.sleep(0.01)
-          mpod.SetCurrent(int(ch[1:]), float(row[3])/1000)
+          mpod.SetCurrent(int(ch[1:]), float(row[3])/1e6)
           time.sleep(0.01)
           count = count+1
+          print(f"Setting {str(row[1]):5s} : Name {str(row[0]):10s}, HV {float(row[2]):6.1f}, I {float(row[3]):6.2f}")
           self.txtFile.setText("Loading Setting, %d/%d ." % (count, row_count))
           self.repaint()
 
-      self.txtFile.setText(file_path + " (Loaded)")
+      self.txtFile.setText(file_path)
+      self.pauseUpdate = False
 
   def UnSetTextColor(self, qLineEdit : QLineEdit):
     qLineEdit.setStyleSheet("")
@@ -315,12 +340,16 @@ class MyWindow(QMainWindow):
     self.timer.stop()
     self.timer.start(int(sec * 1000))
 
+  def SetChName(self, k, ch):
+    self.txtFile.setStyleSheet("color: red")
+
   def SetHV(self, k, ch):
     value = float(self.txtV[k][ch].text())
     print("mod : " +  str(modIndex[k]) + ", ch : " + str(ch) + " | " +  str(value))
     mpod.SetHV( modIndex[k]*100 + ch, value)
     newValue = mpod.GetHV(modIndex[k]*100+ch)
     self.txtV[k][ch].setText("{:.1f}".format(newValue))
+    self.txtFile.setStyleSheet("color: red")
 
   def SetI(self, k, ch):
     value = float(self.txtI[k][ch].text())
@@ -328,6 +357,7 @@ class MyWindow(QMainWindow):
     mpod.SetCurrent( modIndex[k]*100 + ch, value/1e6)
     newValue = mpod.GetCurrent(modIndex[k]*100+ch) * 1e6
     self.txtI[k][ch].setText("{:.2f}".format(newValue))
+    self.txtFile.setStyleSheet("color: red")
 
   def SwitchOnAllCh(self):
     for k in range(0, nMod):
@@ -393,6 +423,10 @@ class MyWindow(QMainWindow):
   def updateTimer(self):
     # self.time += 1
     # print(f'Time: {time.time()}')
+    if self.pauseUpdate : # this is for loading settings
+      print("updating system status paused.")
+      return
+    
     outVList = mpod.GetAllOutputHV()
     outIList = mpod.GetAllLC() 
     # print(outVList)
@@ -418,7 +452,7 @@ class MyWindow(QMainWindow):
       write_api.write(bucket=bucket, org=org, record=points)
 
     if useInfluxDBv1 == True and  self.chkDB.checkState() == Qt.CheckState.Checked:
-      print("pushing data to influxDB")
+      print(f"[{datetime.now()}] pushing data to influxDB")
       with open("output.txt", "w") as f:
         for i, ch in enumerate(chList):
           det = ch % 100
@@ -428,7 +462,9 @@ class MyWindow(QMainWindow):
           line = f"LC,Det={det},Module={module} value={outIList[i]*1e6:.3f}\n"
           f.write(line)
       
-      DB_BashCommand_Mac='curl -sS -i -XPOST "http://%s:8086/write?db=testing" --data-binary @output.txt --speed-time 5 --speed-limit 1000' % databaseIP
+      # -i for HTTP respond
+      #DB_BashCommand_Mac='curl -sS -i -XPOST "http://%s:8086/write?db=testing" --data-binary @output.txt --speed-time 5 --speed-limit 1000' % databaseIP
+      DB_BashCommand_Mac='curl -sS -XPOST "http://%s:8086/write?db=testing" --data-binary @output.txt --speed-time 5 --speed-limit 1000' % databaseIP
       os.system(DB_BashCommand_Mac)
 
 
