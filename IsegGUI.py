@@ -252,6 +252,10 @@ class MyWindow(QMainWindow):
     bSave = QPushButton("Save", self)
     bSave.clicked.connect(self.SaveSetting)
     sLayout.addWidget(bSave, 0, 3)
+
+    bSaveAs = QPushButton("SaveAs", self)
+    bSaveAs.clicked.connect(self.SaveSettingAs)
+    sLayout.addWidget(bSaveAs, 0, 4)
   
     #============= General Setting #TODO
 
@@ -283,6 +287,19 @@ class MyWindow(QMainWindow):
     # msg_box.setIcon(QMessageBox.Icon.Information)
     # msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
     # msg_box.exec()
+    
+  def SaveSettingAs(self):
+    fileName, _ = QFileDialog.getSaveFileName(
+      self,
+      "Save File",
+      "",
+      "CSV Files (*.csv);;All Files (*)"
+    )
+    if fileName :
+      self.txtFile.setText(fileName)
+    else:
+      return
+    self.SaveSetting()
 
   def LoadSetting(self):
     file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", "CSV Files (*.csv);;All Files (*)")
