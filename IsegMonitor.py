@@ -58,13 +58,13 @@ while running:
         outVList = mpod.GetAllOutputHV()   # measured voltage [V]
         outIList = mpod.GetAllLC()          # leakage current [A]
 
-        # Build InfluxDB line protocol
+        # Build InfluxDB line protocol (zero-padded Det and Module tags)
         with open(OUTPUT_FILE, "w") as f:
             for i, ch in enumerate(chList):
                 det    = ch % 100
                 module = ch // 100
-                f.write(f"HV,Det={det},Module={module} value={outVList[i]:.4f}\n")
-                f.write(f"LC,Det={det},Module={module} value={outIList[i]*1e6:.6f}\n")
+                f.write(f"HV,Det={det:02d},Module={module:02d} value={outVList[i]:.4f}\n")
+                f.write(f"LC,Det={det:02d},Module={module:02d} value={outIList[i]*1e6:.6f}\n")
 
         # Push to InfluxDB
         cmd = (f'curl -sS -XPOST "http://{DB_IP}:8086/write?db={DB_NAME}" '
