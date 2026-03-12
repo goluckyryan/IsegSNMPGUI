@@ -4,23 +4,30 @@
 # and pushes to InfluxDB v1 at 192.168.1.193 continuously.
 # Based on IsegGUI.py by goluckyryan — no GUI, no PyQt6 required.
 
-import os
 import sys
 import time
 import signal
 import socket
 from datetime import datetime
 
+import influxdb_client
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
+
 # Add IsegSNMPGUI dir to path so we can import IsegLibrary
+import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import IsegLibrary as iseg
 
 # ---- Config ----
-HV_IP        = "192.168.1.155"
-DB_IP        = "192.168.1.193"
-DB_NAME      = "testing"
-UPDATE_SEC   = 3       # seconds between each poll
-OUTPUT_FILE  = "/tmp/iseg_output.txt"
+HV_IP      = "192.168.1.155"
+DB_IP      = "http://192.168.1.193:8086"
+DB_NAME    = "testing"   # InfluxDB v1 database name (used as bucket)
+UPDATE_SEC = 3           # seconds between each poll
+
+# ---- InfluxDB v1 client (no token needed for v1) ----
+write_client = InfluxDBClient(url=DB_IP, token="", org="")
+write_api = write_client.write_api(write_options=SYNCHRONOUS)
 
 # ---- Single-instance lock via socket ----
 lock_sock = socket.socket()
@@ -58,24 +65,17 @@ while running:
         outVList = mpod.GetAllOutputHV()   # measured voltage [V]
         outIList = mpod.GetAllLC()          # leakage current [A]
 
-        # Build InfluxDB line protocol (zero-padded Det and Module tags)
-        with open(OUTPUT_FILE, "w") as f:
-            for i, ch in enumerate(chList):
-                det    = ch % 100
-                module = ch // 100
-                f.write(f"HV,Det={det:02d},Module={module:02d} value={outVList[i]:.4f}\n")
-                f.write(f"LC,Det={det:02d},Module={module:02d} value={outIList[i]*1e6:.6f}\n")
+        points = []
+        for i, ch in enumerate(chList):
+            det    = ch % 100
+            module = ch // 100
+            points.append(Point("HV").tag("Det", det).tag("Module", module).field("value", float(outVList[i])))
+            points.append(Point("LC").tag("Det", det).tag("Module", module).field("value", float(outIList[i] * 1e6)))
 
-        # Push to InfluxDB
-        cmd = (f'curl -sS -XPOST "http://{DB_IP}:8086/write?db={DB_NAME}" '
-               f'--data-binary @{OUTPUT_FILE} --speed-time 5 --speed-limit 1000')
-        ret = os.system(cmd)
+        write_api.write(bucket=f"{DB_NAME}/", org="", record=points)
 
         ts = datetime.now().strftime("%H:%M:%S")
-        if ret == 0:
-            print(f"[{ts}] Pushed {len(chList)} channels to InfluxDB ✅")
-        else:
-            print(f"[{ts}] WARNING: curl failed (exit {ret})")
+        print(f"[{ts}] Pushed {len(chList)} channels to InfluxDB ✅")
 
     except Exception as e:
         print(f"[{datetime.now()}] ERROR: {e}")
