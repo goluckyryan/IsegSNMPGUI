@@ -474,9 +474,9 @@ class MyWindow(QMainWindow):
         for i, ch in enumerate(chList):
           det = ch % 100
           module = ch // 100
-          line = f"HV,Det={det},Module={module} value={outVList[i]:.3f}\n"
+          line = f"HV,Det={det:02d},Module={module} value={outVList[i]:.3f}\n"
           f.write(line)
-          line = f"LC,Det={det},Module={module} value={outIList[i]*1e6:.3f}\n"
+          line = f"LC,Det={det:02d},Module={module} value={outIList[i]*1e6:.3f}\n"
           f.write(line)
       
       # -i for HTTP respond
