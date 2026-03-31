@@ -72,8 +72,8 @@ while running:
         for i, ch in enumerate(chList):
             det    = ch % 100
             module = ch // 100
-            points.append(Point("HV").tag("Det", det).tag("Module", module).field("value", float(outVList[i])))
-            points.append(Point("LC").tag("Det", det).tag("Module", module).field("value", float(outIList[i] * 1e6)))
+            points.append(Point("HV").tag("Det", f"{det:02d}").tag("Module", module).field("value", float(outVList[i])))
+            points.append(Point("LC").tag("Det", f"{det:02d}").tag("Module", module).field("value", float(outIList[i] * 1e6)))
 
         write_api.write(bucket=f"{DB_NAME}/", org="", record=points)
 
