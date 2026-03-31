@@ -60,6 +60,9 @@ print(f"[{datetime.now()}] Connected. Channels: {chList}")
 print(f"[{datetime.now()}] Pushing to InfluxDB v1 at {DB_IP} every {UPDATE_SEC}s")
 
 # ---- Main loop ----
+MAX_FAILURES  = 5   # consecutive errors before attempting reconnect
+fail_count    = 0
+
 while running:
     try:
         outVList = mpod.GetAllOutputHV()   # measured voltage [V]
@@ -76,9 +79,24 @@ while running:
 
         ts = datetime.now().strftime("%H:%M:%S")
         print(f"[{ts}] Pushed {len(chList)} channels to InfluxDB ✅")
+        fail_count = 0  # reset on success
 
     except Exception as e:
-        print(f"[{datetime.now()}] ERROR: {e}")
+        fail_count += 1
+        print(f"[{datetime.now()}] ERROR ({fail_count}/{MAX_FAILURES}): {e}")
+
+        if fail_count >= MAX_FAILURES:
+            print(f"[{datetime.now()}] Too many consecutive errors — attempting reconnect to MPOD...")
+            try:
+                mpod = iseg.Mpod(HV_IP)
+                if mpod.isConnected:
+                    chList = mpod.GetChList()
+                    fail_count = 0
+                    print(f"[{datetime.now()}] Reconnected. Channels: {chList}")
+                else:
+                    print(f"[{datetime.now()}] Reconnect failed — will retry in {UPDATE_SEC}s")
+            except Exception as re_err:
+                print(f"[{datetime.now()}] Reconnect exception: {re_err}")
 
     time.sleep(UPDATE_SEC)
 

@@ -15,6 +15,7 @@ class Mpod:
   def __init__(self, ip):
     #check SNMP version
     version = str(subprocess.check_output(['snmpwalk', '-V'], stderr=subprocess.STDOUT).decode("ascii"))
+    versionNum = "0.0.0"  # default — safe fallback if regex fails
     match = re.search(r"NET-SNMP version: (\d+\.\d+\.\d+(?:\.\d+)?(?:\.\w+)?)", version)
     if match:
       versionNum = match.group(1)
@@ -22,7 +23,7 @@ class Mpod:
     else:
       print("Error: Could not extract version number." + version)
     self.IP = ip
-    if versionNum < "5.8" :
+    if tuple(map(int, versionNum.split('.')[:3])) < (5, 8, 0) :
       print(">>>>>> snmp version < 5.8, does not support high precision.")
       self.cmd0Str = "-v2c -m +WIENER-CRATE-MIB -c guru %s " % self.IP
     else:
@@ -43,7 +44,7 @@ class Mpod:
         self.isConnected = False
       else:
         self.isConnected = True
-    except :
+    except Exception:
       self.isConnected = False
       print(">>>>>> cannot establish communitation via " + self.IP)
       
@@ -201,7 +202,7 @@ class Mpod:
       int(onOff)
       self.SendCmd(1, "outputSwitch.u" + str(ch) + " i " + str(10))
       return self.SendCmd(1, "outputSwitch.u" + str(ch) + " i " + str(onOff))
-    except :
+    except Exception:
       print("either ch or onOff is not int")
 
   def SwitchALLOnHV(self, onOff):
@@ -210,7 +211,7 @@ class Mpod:
       int(onOff)
       self.SendCmd(1, "groupsSwitch" + " i " + str(10))
       return self.SendCmd(1, "groupsSwitch.u" + " i " + str(onOff))
-    except :
+    except Exception:
       print("onOff is not int or communication problem.")
 
 
