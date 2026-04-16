@@ -112,6 +112,7 @@ class MyWindow(QMainWindow):
     # self.time = 0
     self.timer.start(updateTime*1000)
     self.pauseUpdate = False
+    self.timerCount = 0  # counter for 1-in-10 full update
 
     #=========== database and refresh time
     gLayout = QGridLayout()
@@ -429,13 +430,26 @@ class MyWindow(QMainWindow):
 
   def UpdateAllSettings(self):
     print("Update all settings......")
+    global onOffList
     hvList = mpod.GetAllHV()    # get all V
     iList = mpod.GetAllCurrent() # get all current
+    onOffList = mpod.GetAllOnOff() # get all on/off
 
     for k in range(0, nMod):
       for i, a in enumerate(modChList[k]) :
         self.txtV[k][i].setText(str(hvList[sum(nChPerMod[:k]) + i]))
         self.txtI[k][i].setText("{:.2f}".format(iList[sum(nChPerMod[:k]) + i]*1e6))
+        # update on/off checkbox
+        idx = sum(nChPerMod[:k]) + i
+        if onOffList[idx] == 0:
+          self.chkON[k][i].setChecked(False)
+          self.chkON[k][i].setStyleSheet("")
+        elif onOffList[idx] == 1:
+          self.chkON[k][i].setChecked(True)
+          self.chkON[k][i].setStyleSheet("")
+        elif onOffList[idx] == 3:
+          self.chkON[k][i].setChecked(False)
+          self.chkON[k][i].setStyleSheet("background-color: red;")
  
   def updateTimer(self):
     # self.time += 1
@@ -444,9 +458,17 @@ class MyWindow(QMainWindow):
       print("updating system status paused.")
       return
     
+    self.timerCount += 1
     outVList = mpod.GetAllOutputHV()
     outIList = mpod.GetAllLC() 
     # print(outVList)
+
+    # Every 10th cycle, also update set V and on/off
+    global onOffList
+    doFullUpdate = (self.timerCount % 10 == 0)
+    if doFullUpdate:
+      hvList = mpod.GetAllHV()
+      onOffList = mpod.GetAllOnOff()
 
     if self.chkDB.checkState() == Qt.CheckState.Checked and useInfluxDBv1 == False:
       points = []
@@ -454,12 +476,24 @@ class MyWindow(QMainWindow):
     for k in range(0, nMod):
       for i, a in enumerate(modChList[k]) :
 
-        vout = outVList[sum(nChPerMod[:k]) + i] # in Volt
-        iout = outIList[sum(nChPerMod[:k]) + i] # in Amp
+        idx = sum(nChPerMod[:k]) + i
+        vout = outVList[idx] # in Volt
+        iout = outIList[idx] # in Amp
         self.txtVOut[k][i].setText("{:.2f}".format(vout))
         self.txtIOut[k][i].setText("{:.2f}".format(iout * 1e6))
 
-        # print(f"{k}-{a},{vout:.2f}")
+        # Every 10th cycle: update set V and on/off
+        if doFullUpdate:
+          self.txtV[k][i].setText(str(hvList[idx]))
+          if onOffList[idx] == 0:
+            self.chkON[k][i].setChecked(False)
+            self.chkON[k][i].setStyleSheet("")
+          elif onOffList[idx] == 1:
+            self.chkON[k][i].setChecked(True)
+            self.chkON[k][i].setStyleSheet("")
+          elif onOffList[idx] == 3:
+            self.chkON[k][i].setChecked(False)
+            self.chkON[k][i].setStyleSheet("background-color: red;")
 
         if useInfluxDBv1 == False and self.chkDB.checkState() == Qt.CheckState.Checked :
           points.append(Point("Voltage").tag("Ch",int(chList[i] + 100 * k)).field("value",float(outVList[sum(nChPerMod[:k]) + i])))
